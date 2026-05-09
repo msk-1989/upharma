@@ -47,6 +47,7 @@ model Medicine {
   genericName    String?
   manufacturer   String?
   category       String?  @default("General")
+  drugSchedule   String?  @default("OTC") // OTC, H, H1, X, G, K, C, C1, N, P
   hsnCode        String?
   gstPercent     Float    @default(12)
   barcode        String?

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 
@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
+    const schedule = searchParams.get('schedule') || '';
 
     const where: Prisma.MedicineWhereInput = { active: true };
     if (search) {
@@ -19,7 +20,8 @@ export async function GET(request: NextRequest) {
         { manufacturer: { contains: search } },
       ];
     }
-    if (category) where.category = category;
+    if (category && category !== 'all') where.category = category;
+    if (schedule && schedule !== 'all') where.drugSchedule = schedule;
 
     const medicines = await db.medicine.findMany({
       where,
