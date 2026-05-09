@@ -99,15 +99,7 @@ export function LoginScreen({ onLogin }: { onLogin: (user: AuthUser) => void }) 
             </Button>
           </form>
 
-          <div className="mt-6 p-4 rounded-lg bg-gray-50 border border-border/60">
-            <p className="text-xs text-gray-500 font-medium mb-2">Demo Credentials:</p>
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-              <div><span className="font-medium text-gray-700">admin</span> / admin123</div>
-              <div><span className="font-medium text-gray-700">sneha</span> / admin123</div>
-              <div><span className="font-medium text-gray-700">amit</span> / admin123</div>
-              <div><span className="font-medium text-gray-700">kavita</span> / admin123</div>
-            </div>
-          </div>
+          <p className="mt-6 text-xs text-center text-gray-400">Upharma Desktop ERP</p>
         </CardContent>
       </Card>
     </div>
