@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This screenshot shows a **chat interface** (specifically a chatbot interface) that is displaying **error messages**. It's from the Z.ai platform (labeled \"Zai - Free AI Chatbot & Agent\") using the GLM-5-Turbo model.\n\n**Key elements visible:**\n\n1. **Interface Type**: Chat interface with a sidebar containing navigation options (Chat, Agent, New Task)\n2. **Error Messages**: Multiple error notifications stating \"Oops, something went wrong. Please refresh the page or try again later.\"\n3. **Visible Text**:\n   - \"Zai - Free AI Chatbot & Agent\" (browser tab)\n   - \"GLM-5-Turbo\" (model name)\n   - \"try again.\" (in a gray box)\n   - \"Oops, something went wrong. Please refresh the page or try again later.\" (appears twice in pink error boxes)\n   - \"Please rebuild the Upharma Desktop ERP\" (in a gray box)\n   - \"Send a Message\" (text input field placeholder)\n   - Various sidebar items: \"Chat\", \"Agent\", \"New Task\", \"Zai-Web\", \"Upharma Desktop ERP Overvi...\", \"Hi - Quick Greeting\", \"Upharma Pharmacy ERP Over...\"\n\n4. **Browser Information**: The URL shows \"chat.z.ai/c/4bdde2b6-f524-4ec4-9845-4032f856bb3c\"\n\nThe interface appears to be experiencing technical difficulties, as evidenced by the repeated error messages indicating something has gone wrong with the chat functionality.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1778345247,
+  "id": "20260510004716b1eb3caf1cf14868",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260510004716b1eb3caf1cf14868",
+  "usage": {
+    "completion_tokens": 336,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2740,
+    "prompt_tokens_details": {
+      "cached_tokens": 8
+    },
+    "total_tokens": 3076
+  }
+}
