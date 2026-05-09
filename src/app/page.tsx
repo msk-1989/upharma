@@ -10,10 +10,14 @@ import { MedicinesPage } from '@/components/upharma/medicines';
 import { POSBillingPage } from '@/components/upharma/pos-billing';
 import { InventoryPage } from '@/components/upharma/inventory';
 import { PurchasesPage } from '@/components/upharma/purchases';
+import { PurchaseOrdersPage } from '@/components/upharma/purchase-orders';
 import { CustomersPage } from '@/components/upharma/customers';
 import { SuppliersPage } from '@/components/upharma/suppliers';
+import { RacksPage } from '@/components/upharma/racks';
+import { DoctorsPage } from '@/components/upharma/doctors';
 import { ReturnsPage } from '@/components/upharma/returns';
 import { ReportsPage } from '@/components/upharma/reports';
+import { DayClosePage } from '@/components/upharma/day-close';
 import { BackupPage } from '@/components/upharma/backup';
 import { LoginScreen } from '@/components/upharma/login';
 
@@ -40,14 +44,22 @@ function PageContent() {
       return <InventoryPage />;
     case 'purchases':
       return <PurchasesPage />;
+    case 'purchase-orders':
+      return <PurchaseOrdersPage />;
     case 'customers':
       return <CustomersPage />;
     case 'suppliers':
       return <SuppliersPage />;
+    case 'racks':
+      return <RacksPage />;
+    case 'doctors':
+      return <DoctorsPage />;
     case 'returns':
       return <ReturnsPage />;
     case 'reports':
       return <ReportsPage />;
+    case 'day-close':
+      return <DayClosePage />;
     case 'backup':
       return <BackupPage />;
     default:
@@ -68,13 +80,17 @@ export default function Home() {
     setLoading(false);
   }, []);
 
+  const { setUser: setStoreUser } = useAppStore();
+
   const handleLogin = (u: AuthUser) => {
     setUser(u);
+    setStoreUser(u);
     sessionStorage.setItem('upharma_user', JSON.stringify(u));
   };
 
   const handleLogout = () => {
     setUser(null);
+    setStoreUser(null);
     sessionStorage.removeItem('upharma_user');
   };
 

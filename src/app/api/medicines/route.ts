@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         { genericName: { contains: search } },
         { barcode: { contains: search } },
         { manufacturer: { contains: search } },
+        { alternateBarcodes: { contains: search } },
       ];
     }
     if (category && category !== 'all') where.category = category;

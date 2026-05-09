@@ -15,6 +15,10 @@ import {
   TrendingUp,
   X,
   Stethoscope,
+  Star,
+  AlertTriangle,
+  CreditCard,
+  ShieldCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +44,8 @@ interface Customer {
   doctorName: string | null;
   balance: number;
   totalPurchases: number;
+  loyaltyPoints: number;
+  creditLimit: number;
   active: boolean;
   sales: CustomerSale[];
   payments: CustomerPayment[];
@@ -53,6 +59,9 @@ interface CustomerSale {
   paidAmount: number;
   balanceDue: number;
   paymentMode: string;
+  loyaltyPointsEarned: number;
+  loyaltyPointsUsed: number;
+  items?: { medicineName?: string; quantity?: number; total?: number }[];
 }
 
 interface CustomerPayment {
@@ -65,6 +74,7 @@ interface CustomerPayment {
 
 interface CustomerDetail extends Customer {
   ledger?: LedgerEntry[];
+  monthlyPointsEarned?: number;
 }
 
 interface LedgerEntry {
@@ -82,6 +92,7 @@ const emptyForm = {
   email: '',
   address: '',
   doctorName: '',
+  creditLimit: 0,
 };
 
 function formatCurrency(amount: number) {
@@ -94,6 +105,22 @@ function formatDate(dateStr: string) {
     month: 'short',
     year: 'numeric',
   });
+}
+
+function CreditUtilBar({ used, limit }: { used: number; limit: number }) {
+  if (limit <= 0) return null;
+  const pct = Math.min((used / limit) * 100, 100);
+  const color = pct < 50 ? 'bg-emerald-500' : pct < 80 ? 'bg-orange-500' : 'bg-red-500';
+  const textColor = pct < 50 ? 'text-emerald-600' : pct < 80 ? 'text-orange-600' : 'text-red-600';
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className={`text-[10px] font-medium ${textColor}`}>{Math.round(pct)}%</span>
+    </div>
+  );
 }
 
 function StatCard({
@@ -164,17 +191,26 @@ export function CustomersPage() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
+      const payload: any = {
+        name: form.name,
+        phone: form.phone || null,
+        email: form.email || null,
+        address: form.address || null,
+        doctorName: form.doctorName || null,
+        creditLimit: Number(form.creditLimit) || 0,
+      };
+
       if (editing) {
         await fetch(`/api/customers/${editing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       } else {
         await fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       }
       setDialogOpen(false);
@@ -195,6 +231,7 @@ export function CustomersPage() {
       email: customer.email || '',
       address: customer.address || '',
       doctorName: customer.doctorName || '',
+      creditLimit: customer.creditLimit || 0,
     });
     setDialogOpen(true);
   };
@@ -242,6 +279,10 @@ export function CustomersPage() {
       ? customers.reduce((sum, c) => sum + c.totalPurchases, 0) /
         totalCustomers
       : 0;
+  const totalLoyaltyPoints = customers.reduce((sum, c) => sum + c.loyaltyPoints, 0);
+  const nearCreditLimit = customers.filter(
+    (c) => c.creditLimit > 0 && c.balance > c.creditLimit * 0.8
+  ).length;
 
   const filteredCustomers = customers.filter((c) => {
     if (!search) return true;
@@ -278,7 +319,7 @@ export function CustomersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           label="Total Customers"
           value={String(totalCustomers)}
@@ -290,8 +331,8 @@ export function CustomersPage() {
           label="Active Customers"
           value={String(activeCustomers)}
           icon={UserCheck}
-          color="text-blue-600"
-          bg="bg-blue-50"
+          color="text-teal-600"
+          bg="bg-teal-50"
         />
         <StatCard
           label="Total Outstanding"
@@ -301,11 +342,25 @@ export function CustomersPage() {
           bg="bg-red-50"
         />
         <StatCard
-          label="Avg. Purchase Value"
+          label="Avg. Purchase"
           value={formatCurrency(avgPurchase)}
           icon={TrendingUp}
           color="text-purple-600"
           bg="bg-purple-50"
+        />
+        <StatCard
+          label="Total Loyalty Points"
+          value={totalLoyaltyPoints.toLocaleString('en-IN')}
+          icon={Star}
+          color="text-amber-600"
+          bg="bg-amber-50"
+        />
+        <StatCard
+          label="Near Credit Limit"
+          value={String(nearCreditLimit)}
+          icon={AlertTriangle}
+          color={nearCreditLimit > 0 ? 'text-red-600' : 'text-gray-400'}
+          bg={nearCreditLimit > 0 ? 'bg-red-50' : 'bg-gray-50'}
         />
       </div>
 
@@ -343,11 +398,15 @@ export function CustomersPage() {
                   <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
                     Phone
                   </th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
-                    Email
+                  <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
+                    <span className="flex items-center gap-1 justify-center">
+                      <Star className="w-3 h-3 text-amber-500" /> Points
+                    </span>
                   </th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
-                    Doctor
+                    <span className="flex items-center gap-1">
+                      <CreditCard className="w-3 h-3" /> Credit Limit / Used
+                    </span>
                   </th>
                   <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
                     Balance Due
@@ -398,7 +457,7 @@ export function CustomersPage() {
                             {customer.name}
                           </p>
                           {customer.address && (
-                            <p className="text-xs text-gray-400 truncate max-w-[180px]">
+                            <p className="text-xs text-gray-400 truncate max-w-[150px]">
                               {customer.address}
                             </p>
                           )}
@@ -409,19 +468,22 @@ export function CustomersPage() {
                           {customer.phone || '—'}
                         </span>
                       </td>
-                      <td className="p-3">
-                        <span className="text-sm text-gray-600 truncate block max-w-[180px]">
-                          {customer.email || '—'}
+                      <td className="p-3 text-center">
+                        <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-600">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          {customer.loyaltyPoints}
                         </span>
                       </td>
                       <td className="p-3">
-                        {customer.doctorName ? (
-                          <span className="text-sm text-gray-600 flex items-center gap-1">
-                            <Stethoscope className="w-3 h-3 text-gray-400" />
-                            {customer.doctorName}
-                          </span>
+                        {customer.creditLimit > 0 ? (
+                          <div className="min-w-[120px]">
+                            <p className="text-xs text-gray-700 font-medium">
+                              {formatCurrency(customer.creditLimit)} / {formatCurrency(customer.balance)}
+                            </p>
+                            <CreditUtilBar used={customer.balance} limit={customer.creditLimit} />
+                          </div>
                         ) : (
-                          <span className="text-sm text-gray-400">—</span>
+                          <span className="text-xs text-gray-400">No limit set</span>
                         )}
                       </td>
                       <td className="p-3 text-right">
@@ -563,6 +625,39 @@ export function CustomersPage() {
                 placeholder="e.g. Dr. Suresh Babu"
               />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-gray-400" />
+                  Credit Limit (₹)
+                </Label>
+                <Input
+                  value={form.creditLimit}
+                  onChange={(e) =>
+                    setForm({ ...form, creditLimit: Number(e.target.value) || 0 })
+                  }
+                  className="border-border/80"
+                  placeholder="e.g. 10000"
+                  type="number"
+                  min="0"
+                />
+              </div>
+              {editing && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5 text-amber-400" />
+                    Loyalty Points
+                  </Label>
+                  <div className="flex items-center gap-2 h-9 px-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <Star className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <span className="text-sm font-semibold text-amber-700">
+                      {editing.loyaltyPoints} pts
+                    </span>
+                    <span className="text-xs text-amber-500 ml-auto">Read-only</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -640,54 +735,96 @@ export function CustomersPage() {
                 </div>
               </div>
 
-              {/* Balance Summary */}
+              {/* Loyalty & Credit Info */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
-                  <p className="text-xs text-emerald-600 font-medium">
-                    Total Purchases
+                {/* Loyalty Points Card */}
+                <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <p className="text-xs font-medium text-amber-600">Loyalty Points</p>
+                  </div>
+                  <p className="text-2xl font-bold text-amber-700">
+                    {selectedCustomer.loyaltyPoints}
                   </p>
-                  <p className="text-lg font-bold text-emerald-700">
-                    {formatCurrency(selectedCustomer.totalPurchases)}
+                  <p className="text-[11px] text-amber-500 mt-1">
+                    Earned this month: {selectedCustomer.monthlyPointsEarned || 0}
                   </p>
-                </div>
-                <div
-                  className={`p-4 rounded-lg border ${
-                    selectedCustomer.balance > 0
-                      ? 'bg-red-50 border-red-200'
-                      : 'bg-emerald-50 border-emerald-200'
-                  }`}
-                >
-                  <p
-                    className={`text-xs font-medium ${
-                      selectedCustomer.balance > 0
-                        ? 'text-red-600'
-                        : 'text-emerald-600'
-                    }`}
-                  >
-                    Outstanding Balance
-                  </p>
-                  <p
-                    className={`text-lg font-bold ${
-                      selectedCustomer.balance > 0
-                        ? 'text-red-700'
-                        : 'text-emerald-700'
-                    }`}
-                  >
-                    {formatCurrency(selectedCustomer.balance)}
+                  <p className="text-[10px] text-amber-400 mt-0.5">
+                    1 point per ₹100 spent
                   </p>
                 </div>
+
+                {/* Credit Summary Card */}
                 <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                  <p className="text-xs text-gray-600 font-medium">Status</p>
-                  <Badge
-                    variant="secondary"
-                    className={`mt-1 ${
-                      selectedCustomer.active
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-gray-200 text-gray-600'
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="w-4 h-4 text-gray-500" />
+                    <p className="text-xs font-medium text-gray-600">Credit Summary</p>
+                  </div>
+                  {selectedCustomer.creditLimit > 0 ? (
+                    <>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-500">Limit</span>
+                          <span className="font-medium text-gray-700">{formatCurrency(selectedCustomer.creditLimit)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-500">Outstanding</span>
+                          <span className={`font-semibold ${selectedCustomer.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                            {formatCurrency(selectedCustomer.balance)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs border-t border-gray-200 pt-1">
+                          <span className="text-gray-500">Available</span>
+                          <span className="font-semibold text-emerald-700">
+                            {formatCurrency(Math.max(0, selectedCustomer.creditLimit - selectedCustomer.balance))}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <CreditUtilBar used={selectedCustomer.balance} limit={selectedCustomer.creditLimit} />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-400">No credit limit set</p>
+                  )}
+                </div>
+
+                {/* Purchases & Status */}
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <p className="text-xs text-emerald-600 font-medium">
+                      Total Purchases
+                    </p>
+                    <p className="text-lg font-bold text-emerald-700">
+                      {formatCurrency(selectedCustomer.totalPurchases)}
+                    </p>
+                  </div>
+                  <div
+                    className={`p-3 rounded-lg border ${
+                      selectedCustomer.balance > 0
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-emerald-50 border-emerald-200'
                     }`}
                   >
-                    {selectedCustomer.active ? 'Active' : 'Inactive'}
-                  </Badge>
+                    <p
+                      className={`text-xs font-medium ${
+                        selectedCustomer.balance > 0
+                          ? 'text-red-600'
+                          : 'text-emerald-600'
+                      }`}
+                    >
+                      Outstanding Balance
+                    </p>
+                    <p
+                      className={`text-lg font-bold ${
+                        selectedCustomer.balance > 0
+                          ? 'text-red-700'
+                          : 'text-emerald-700'
+                      }`}
+                    >
+                      {formatCurrency(selectedCustomer.balance)}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -705,9 +842,9 @@ export function CustomersPage() {
                 <TabsContent value="sales">
                   {selectedCustomer.sales &&
                   selectedCustomer.sales.length > 0 ? (
-                    <div className="overflow-x-auto mt-4 border border-border/60 rounded-lg">
+                    <div className="overflow-x-auto mt-4 border border-border/60 rounded-lg max-h-80 overflow-y-auto">
                       <table className="w-full">
-                        <thead>
+                        <thead className="sticky top-0 bg-white">
                           <tr className="border-b border-border bg-gray-50/50">
                             <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
                               Invoice
@@ -723,6 +860,9 @@ export function CustomersPage() {
                             </th>
                             <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
                               Balance
+                            </th>
+                            <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
+                              Points
                             </th>
                             <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
                               Mode
@@ -758,6 +898,21 @@ export function CustomersPage() {
                                   {formatCurrency(sale.balanceDue)}
                                 </span>
                               </td>
+                              <td className="p-3 text-center">
+                                {(sale.loyaltyPointsEarned > 0 || sale.loyaltyPointsUsed > 0) && (
+                                  <span className="text-xs">
+                                    {sale.loyaltyPointsEarned > 0 && (
+                                      <span className="text-amber-600 font-medium">+{sale.loyaltyPointsEarned}</span>
+                                    )}
+                                    {sale.loyaltyPointsEarned > 0 && sale.loyaltyPointsUsed > 0 && (
+                                      <span className="text-gray-400"> / </span>
+                                    )}
+                                    {sale.loyaltyPointsUsed > 0 && (
+                                      <span className="text-red-500 font-medium">-{sale.loyaltyPointsUsed}</span>
+                                    )}
+                                  </span>
+                                )}
+                              </td>
                               <td className="p-3">
                                 <Badge
                                   variant="outline"
@@ -781,9 +936,9 @@ export function CustomersPage() {
                 <TabsContent value="payments">
                   {selectedCustomer.payments &&
                   selectedCustomer.payments.length > 0 ? (
-                    <div className="overflow-x-auto mt-4 border border-border/60 rounded-lg">
+                    <div className="overflow-x-auto mt-4 border border-border/60 rounded-lg max-h-80 overflow-y-auto">
                       <table className="w-full">
-                        <thead>
+                        <thead className="sticky top-0 bg-white">
                           <tr className="border-b border-border bg-gray-50/50">
                             <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
                               Date

@@ -20,6 +20,9 @@ import {
   AlertCircle,
   User,
   Clock,
+  Star,
+  AlertTriangle,
+  Shield,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,19 +79,22 @@ interface CartItem {
   expiryDate: string;
   quantity: number;
   unitType: 'tablet' | 'strip' | 'box';
-  saleRate: number; // per smallest unit
-  mrp: number; // per smallest unit
+  saleRate: number;
+  mrp: number;
   gstPercent: number;
   unitsPerStrip: number;
   stripsPerBox: number;
   baseUnit: string;
-  availableStock: number; // in smallest units
+  availableStock: number;
 }
 
 interface Customer {
   id: string;
   name: string;
   phone: string | null;
+  loyaltyPoints: number;
+  creditLimit: number;
+  balance: number;
 }
 
 interface RecentSale {
@@ -175,12 +181,22 @@ export function POSBillingPage() {
   const [walkInCustomerName, setWalkInCustomerName] = useState<string>('');
   const [paymentMode, setPaymentMode] = useState<string>('Cash');
 
+  // Loyalty & Credit state
+  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const [creditWarning, setCreditWarning] = useState<string | null>(null);
+
   // Sale state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastInvoiceNo, setLastInvoiceNo] = useState<string>('');
   const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
 
   const { toast } = useToast();
+
+  // ==================== DERIVED VALUES ====================
+
+  const selectedCustomer = selectedCustomerId !== 'walk-in'
+    ? customers.find((c) => c.id === selectedCustomerId)
+    : null;
 
   // ==================== LOAD CUSTOMERS ====================
 
@@ -209,6 +225,21 @@ export function POSBillingPage() {
   useEffect(() => {
     loadRecentSales();
   }, [loadRecentSales]);
+
+  // ==================== CREDIT LIMIT CHECK ====================
+
+  useEffect(() => {
+    setCreditWarning(null);
+    if (selectedCustomer && selectedCustomer.creditLimit > 0 && cart.length > 0) {
+      const projectedBalance = selectedCustomer.balance + grandTotal;
+      if (projectedBalance > selectedCustomer.creditLimit) {
+        const excess = Math.round((projectedBalance - selectedCustomer.creditLimit) * 100) / 100;
+        setCreditWarning(
+          `This sale will exceed customer's credit limit by ${formatINR(excess)}`
+        );
+      }
+    }
+  }, [selectedCustomer, cart.length, grandTotal]);
 
   // ==================== DEBOUNCED SEARCH ====================
 
@@ -259,7 +290,6 @@ export function POSBillingPage() {
   // ==================== ADD TO CART ====================
 
   const addToCart = (medicine: MedicineSearchResult) => {
-    // Pick the first batch (earliest expiry - FIFO)
     const batch = medicine.batches.length > 0 ? medicine.batches[0] : null;
     if (!batch || batch.stockQty <= 0) {
       toast({
@@ -270,13 +300,11 @@ export function POSBillingPage() {
       return;
     }
 
-    // Check if medicine already in cart with same batch
     const existingIdx = cart.findIndex(
       (item) => item.medicineId === medicine.id && item.batchId === batch.id
     );
 
     if (existingIdx >= 0) {
-      // Increment quantity
       const item = cart[existingIdx];
       const newQty = item.quantity + 1;
       const newQtySmallest = newQty * getUnitMultiplier(item.unitType, item.unitsPerStrip, item.stripsPerBox);
@@ -383,7 +411,14 @@ export function POSBillingPage() {
   const totalCgst = cart.reduce((sum, item) => sum + calcItemLine(item).cgst, 0);
   const totalSgst = cart.reduce((sum, item) => sum + calcItemLine(item).sgst, 0);
   const totalGst = totalCgst + totalSgst;
-  const grandTotal = subtotal + totalGst;
+  const preDiscountTotal = subtotal + totalGst;
+
+  // Loyalty points calculations
+  const maxPointsDiscount = preDiscountTotal * 0.1; // Max 10% of bill
+  const availablePoints = selectedCustomer?.loyaltyPoints || 0;
+  const pointsToUse = useLoyaltyPoints ? Math.min(availablePoints, maxPointsDiscount) : 0;
+  const loyaltyDiscount = pointsToUse; // ₹1 per point
+  const grandTotal = Math.round((preDiscountTotal - loyaltyDiscount) * 100) / 100;
 
   // ==================== COMPLETE SALE ====================
 
@@ -406,12 +441,10 @@ export function POSBillingPage() {
         unitType: item.unitType,
       }));
 
-      // Determine customer name for bill
       let customerName: string | undefined;
       if (selectedCustomerId === 'walk-in') {
         customerName = walkInCustomerName.trim() || undefined;
       } else {
-        const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
         customerName = selectedCustomer?.name;
       }
 
@@ -420,6 +453,7 @@ export function POSBillingPage() {
         customerName,
         paymentMode,
         items: saleItems,
+        loyaltyPointsUsed: pointsToUse,
       };
 
       const res = await fetch('/api/sales', {
@@ -435,10 +469,34 @@ export function POSBillingPage() {
       }
 
       setLastInvoiceNo(data.data.invoiceNo);
+
+      // Show success toast with loyalty points earned
+      let toastDescription = `Invoice ${data.data.invoiceNo} — ${formatINR(data.data.grandTotal)}`;
+      if (data.loyaltyPointsEarned > 0) {
+        toastDescription += ` | Earned ${data.loyaltyPointsEarned} loyalty points ⭐`;
+      }
+
       toast({
         title: 'Sale Completed!',
-        description: `Invoice ${data.data.invoiceNo} — ${formatINR(data.data.grandTotal)}`,
+        description: toastDescription,
       });
+
+      // Show credit warning if returned
+      if (data.warning) {
+        toast({
+          title: 'Credit Limit Warning',
+          description: data.warning,
+          variant: 'destructive',
+        });
+      }
+
+      // Reload customers to refresh loyalty points & balance
+      fetch('/api/customers')
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success) setCustomers(res.data);
+        })
+        .catch(console.error);
 
       // Clear cart and reload recent sales
       clearCart();
@@ -446,6 +504,8 @@ export function POSBillingPage() {
       setSelectedCustomerId('walk-in');
       setWalkInCustomerName('');
       setPaymentMode('Cash');
+      setUseLoyaltyPoints(false);
+      setCreditWarning(null);
       loadRecentSales();
     } catch (err) {
       toast({
@@ -662,7 +722,6 @@ export function POSBillingPage() {
                             key={item.cartId}
                             className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors"
                           >
-                            {/* Medicine Name */}
                             <td className="px-6 py-3">
                               <div>
                                 <p className="text-sm font-medium text-gray-900 leading-tight">
@@ -677,7 +736,6 @@ export function POSBillingPage() {
                               </div>
                             </td>
 
-                            {/* Batch / Expiry */}
                             <td className="px-3 py-3">
                               <p className="text-xs font-mono text-gray-700">{item.batchNo}</p>
                               <p
@@ -689,7 +747,6 @@ export function POSBillingPage() {
                               </p>
                             </td>
 
-                            {/* Unit Type */}
                             <td className="px-3 py-3 text-center">
                               <select
                                 className="text-xs border border-gray-200 rounded-md px-1.5 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 cursor-pointer"
@@ -707,7 +764,6 @@ export function POSBillingPage() {
                               </select>
                             </td>
 
-                            {/* Quantity */}
                             <td className="px-3 py-3">
                               <div className="flex items-center justify-center gap-1">
                                 <button
@@ -729,14 +785,12 @@ export function POSBillingPage() {
                               </div>
                             </td>
 
-                            {/* Rate */}
                             <td className="px-3 py-3 text-right">
                               <p className="text-sm font-medium text-gray-900">
                                 {formatINR(displayRate)}
                               </p>
                             </td>
 
-                            {/* GST */}
                             <td className="px-3 py-3 text-right">
                               <Badge
                                 variant="secondary"
@@ -746,7 +800,6 @@ export function POSBillingPage() {
                               </Badge>
                             </td>
 
-                            {/* Total */}
                             <td className="px-6 py-3 text-right">
                               <p className="text-sm font-bold text-gray-900">
                                 {formatINR(lineTotal + gst)}
@@ -756,7 +809,6 @@ export function POSBillingPage() {
                               </p>
                             </td>
 
-                            {/* Remove */}
                             <td className="px-3 py-3">
                               <button
                                 className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -879,6 +931,7 @@ export function POSBillingPage() {
               <Select value={selectedCustomerId} onValueChange={(val) => {
                 setSelectedCustomerId(val);
                 if (val !== 'walk-in') setWalkInCustomerName('');
+                setUseLoyaltyPoints(false);
               }}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select customer" />
@@ -921,25 +974,54 @@ export function POSBillingPage() {
                 </div>
               )}
 
-              {/* Selected Customer Info */}
-              {selectedCustomerId !== 'walk-in' && (() => {
-                const sel = customers.find((c) => c.id === selectedCustomerId);
-                if (!sel) return null;
-                return (
+              {/* Selected Customer Info with Loyalty & Credit */}
+              {selectedCustomer && (
+                <div className="space-y-2">
                   <div className="bg-emerald-50 rounded-lg p-2.5 flex items-center gap-2">
                     <User className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{sel.name}</p>
-                      {sel.phone && (
-                        <p className="text-xs text-gray-500">{sel.phone}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{selectedCustomer.name}</p>
+                      {selectedCustomer.phone && (
+                        <p className="text-xs text-gray-500">{selectedCustomer.phone}</p>
                       )}
                     </div>
                     <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0 flex-shrink-0">
                       Linked
                     </Badge>
                   </div>
-                );
-              })()}
+
+                  {/* Loyalty Points & Available Credit */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                        <span className="text-[10px] font-medium text-amber-600">Loyalty Points</span>
+                      </div>
+                      <p className="text-sm font-bold text-amber-700 mt-0.5">
+                        {selectedCustomer.loyaltyPoints}
+                      </p>
+                    </div>
+                    <div className="bg-teal-50 border border-teal-200 rounded-lg p-2">
+                      <div className="flex items-center gap-1">
+                        <Shield className="w-3.5 h-3.5 text-teal-500" />
+                        <span className="text-[10px] font-medium text-teal-600">Available Credit</span>
+                      </div>
+                      <p className="text-sm font-bold text-teal-700 mt-0.5">
+                        {selectedCustomer.creditLimit > 0
+                          ? formatINR(Math.max(0, selectedCustomer.creditLimit - selectedCustomer.balance))
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedCustomer.creditLimit > 0 && selectedCustomer.balance > 0 && (
+                    <div className="text-[11px] text-gray-500 flex items-center gap-1">
+                      <IndianRupee className="w-3 h-3" />
+                      Outstanding: {formatINR(selectedCustomer.balance)} / {formatINR(selectedCustomer.creditLimit)}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <p className="text-[11px] text-gray-400">
                 {selectedCustomerId === 'walk-in'
@@ -993,6 +1075,52 @@ export function POSBillingPage() {
             </CardContent>
           </Card>
 
+          {/* Loyalty Points Toggle */}
+          {selectedCustomer && selectedCustomer.loyaltyPoints > 0 && cart.length > 0 && (
+            <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <span className="text-sm font-medium text-amber-700">
+                      Use Loyalty Points
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setUseLoyaltyPoints(!useLoyaltyPoints)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      useLoyaltyPoints ? 'bg-amber-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                        useLoyaltyPoints ? 'translate-x-4.5 ml-0.5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+                {useLoyaltyPoints && (
+                  <div className="text-xs text-amber-600 bg-amber-100 rounded-md p-2 space-y-0.5">
+                    <p>Available points: <strong>{selectedCustomer.loyaltyPoints}</strong></p>
+                    <p>Points to use: <strong>{pointsToUse}</strong> (max 10% of bill)</p>
+                    <p>Discount: <strong>{formatINR(loyaltyDiscount)}</strong> (₹1 per point)</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Credit Warning */}
+          {creditWarning && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-700">Credit Limit Warning</p>
+                <p className="text-xs text-red-600 mt-0.5">{creditWarning}</p>
+              </div>
+            </div>
+          )}
+
           {/* Bill Summary */}
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="pb-3">
@@ -1010,7 +1138,6 @@ export function POSBillingPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Subtotal */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Subtotal</span>
                     <span className="text-sm font-medium text-gray-900">
@@ -1018,7 +1145,6 @@ export function POSBillingPage() {
                     </span>
                   </div>
 
-                  {/* GST Breakdown */}
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">CGST</span>
@@ -1041,7 +1167,18 @@ export function POSBillingPage() {
                     </div>
                   </div>
 
-                  {/* Item Count */}
+                  {loyaltyDiscount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-amber-600 flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        Loyalty Discount
+                      </span>
+                      <span className="text-sm font-medium text-amber-600">
+                        -{formatINR(loyaltyDiscount)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Items</span>
                     <span className="text-sm text-gray-700">
@@ -1051,13 +1188,20 @@ export function POSBillingPage() {
 
                   <Separator />
 
-                  {/* Grand Total */}
                   <div className="flex items-center justify-between py-1">
                     <span className="text-lg font-bold text-gray-900">Grand Total</span>
                     <span className="text-lg font-bold text-emerald-600">
                       {formatINR(grandTotal)}
                     </span>
                   </div>
+
+                  {/* Loyalty points preview */}
+                  {selectedCustomer && (
+                    <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                      <Star className="w-3 h-3 text-amber-400" />
+                      You will earn {Math.floor(grandTotal / 100)} loyalty points from this sale
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

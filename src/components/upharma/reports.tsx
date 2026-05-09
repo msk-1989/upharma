@@ -21,6 +21,8 @@ import {
   BoxIcon,
   Calculator,
   Layers,
+  FileSpreadsheet,
+  FileCode,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -225,19 +227,70 @@ export function ReportsPage() {
             Analyze your pharmacy business data
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="gap-2 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-          onClick={fetchReport}
-          disabled={loading}
-        >
-          {loading ? (
-            <span className="w-4 h-4 border-2 border-emerald-300 border-t-emerald-600 rounded-full animate-spin" />
-          ) : (
-            <BarChart3 className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          {/* Export to Tally */}
+          {(reportType === 'sales' || reportType === 'purchases') && (
+            <Button
+              variant="outline"
+              className="gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"
+              onClick={() => {
+                const params = new URLSearchParams();
+                params.set('type', reportType);
+                params.set('from', dateFrom);
+                params.set('to', dateTo);
+                window.open(`/api/exports/tally?${params}`, '_blank');
+              }}
+              disabled={loading}
+            >
+              <FileCode className="w-4 h-4" />
+              <span className="hidden sm:inline">Export Tally</span>
+            </Button>
           )}
-          Refresh
-        </Button>
+          {reportType === 'gst' && (
+            <Button
+              variant="outline"
+              className="gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"
+              onClick={() => {
+                window.open('/api/exports/tally?type=masters', '_blank');
+              }}
+              disabled={loading}
+            >
+              <FileCode className="w-4 h-4" />
+              <span className="hidden sm:inline">Tally Masters</span>
+            </Button>
+          )}
+          {/* Export CSV */}
+          <Button
+            variant="outline"
+            className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.set('type', reportType);
+              if (reportType !== 'stock') {
+                params.set('from', dateFrom);
+                params.set('to', dateTo);
+              }
+              window.open(`/api/exports/csv?${params}`, '_blank');
+            }}
+            disabled={loading}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+            onClick={fetchReport}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="w-4 h-4 border-2 border-emerald-300 border-t-emerald-600 rounded-full animate-spin" />
+            ) : (
+              <BarChart3 className="w-4 h-4" />
+            )}
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Report Type Tabs */}

@@ -7,14 +7,18 @@ import {
   Pill,
   Package,
   Truck,
+  ClipboardList,
   Users,
   FileText,
   RefreshCw,
   BarChart3,
+  CalendarCheck,
   Settings,
   Database,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  Stethoscope,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore, type PageKey } from '@/stores/app-store';
@@ -31,10 +35,14 @@ const navItems: { key: PageKey; label: string; icon: React.ElementType }[] = [
   { key: 'medicines', label: 'Medicines', icon: Pill },
   { key: 'inventory', label: 'Inventory', icon: Package },
   { key: 'purchases', label: 'Purchases', icon: Truck },
+  { key: 'purchase-orders', label: 'Purchase Orders', icon: ClipboardList },
   { key: 'customers', label: 'Customers', icon: Users },
   { key: 'suppliers', label: 'Suppliers', icon: FileText },
+  { key: 'racks', label: 'Racks', icon: LayoutGrid },
+  { key: 'doctors', label: 'Doctors', icon: Stethoscope },
   { key: 'returns', label: 'Returns', icon: RefreshCw },
   { key: 'reports', label: 'Reports', icon: BarChart3 },
+  { key: 'day-close', label: 'Day Closing', icon: CalendarCheck },
   { key: 'settings', label: 'Settings', icon: Settings },
   { key: 'backup', label: 'Backup', icon: Database },
 ];

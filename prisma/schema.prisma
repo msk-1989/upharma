@@ -24,9 +24,12 @@ model User {
 
   sales           Sale[]
   purchases       Purchase[]
+  purchaseOrders  PurchaseOrder[]
   auditLogs       AuditLog[]
   stockMovements  StockMovement[]
   returns         Return[]
+  dayCloseOpened  DayClose[] @relation("DayCloseOpener")
+  dayCloseClosed  DayClose[] @relation("DayCloseCloser")
 }
 
 // ==================== SETTINGS ====================
@@ -51,6 +54,7 @@ model Medicine {
   hsnCode        String?
   gstPercent     Float    @default(12)
   barcode        String?
+  alternateBarcodes String? // comma-separated alternate barcodes
   baseUnit       String   @default("Tablet") // Tablet, Capsule, Bottle, Tube, etc
   unitsPerStrip  Int      @default(10)
   stripsPerBox   Int      @default(10)
@@ -59,15 +63,18 @@ model Medicine {
   saleRate       Float    @default(0) // per smallest unit
   mrp            Float    @default(0) // per smallest unit
   reorderLevel   Int      @default(20)
+  imageUrl       String?  // medicine image
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  batches         MedicineBatch[]
-  saleItems       SaleItem[]
-  purchaseItems   PurchaseItem[]
-  stockMovements  StockMovement[]
-  returnItems     ReturnItem[]
+  batches           MedicineBatch[]
+  saleItems         SaleItem[]
+  purchaseItems     PurchaseItem[]
+  poItems           PurchaseOrderItem[]
+  stockMovements    StockMovement[]
+  returnItems       ReturnItem[]
+  prescriptionItems PrescriptionItem[]
 }
 
 // ==================== MEDICINE BATCHES ====================
@@ -84,15 +91,32 @@ model MedicineBatch {
   initialStock Int      @default(0)
   supplierId   String?
   purchaseDate DateTime?
+  rackId       String?  // shelf/rack location
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  medicine     Medicine  @relation(fields: [medicineId], references: [id])
-  supplier     Supplier? @relation(fields: [supplierId], references: [id])
-  saleItems       SaleItem[]
-  purchaseItems   PurchaseItem[]
-  returnItems     ReturnItem[]
+  medicine Medicine  @relation(fields: [medicineId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  rack     Rack?     @relation(fields: [rackId], references: [id])
+  saleItems     SaleItem[]
+  purchaseItems PurchaseItem[]
+  returnItems   ReturnItem[]
+}
+
+// ==================== RACKS / SHELVES ====================
+
+model Rack {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "A1", "B2", "Shelf-1"
+  aisle       String?  // e.g., "A", "B", "C"
+  section     String?  // e.g., "Antibiotics", "OTC", "General"
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  batches MedicineBatch[]
 }
 
 // ==================== STOCK MOVEMENTS ====================
@@ -128,17 +152,19 @@ model Supplier {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  purchases    Purchase[]
-  batches      MedicineBatch[]
-  returns      Return[]
+  purchases       Purchase[]
+  purchaseOrders  PurchaseOrder[]
+  batches         MedicineBatch[]
+  returns         Return[]
 }
 
-// ==================== PURCHASES ====================
+// ==================== PURCHASES (GRN - Goods Receipt Note) ====================
 
 model Purchase {
   id            String   @id @default(cuid())
   invoiceNo     String   @unique
   supplierId    String
+  poId          String?  // linked purchase order ID
   date          DateTime @default(now())
   subtotal      Float    @default(0)
   cgst          Float    @default(0)
@@ -155,9 +181,10 @@ model Purchase {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  supplier      Supplier     @relation(fields: [supplierId], references: [id])
-  user          User?        @relation(fields: [userId], references: [id])
-  items         PurchaseItem[]
+  supplier Supplier     @relation(fields: [supplierId], references: [id])
+  user     User?        @relation(fields: [userId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [poId], references: [id])
+  items    PurchaseItem[]
 }
 
 model PurchaseItem {
@@ -184,54 +211,155 @@ model PurchaseItem {
   batch    MedicineBatch? @relation(fields: [batchId], references: [id])
 }
 
+// ==================== PURCHASE ORDERS ====================
+
+model PurchaseOrder {
+  id            String    @id @default(cuid())
+  poNumber      String    @unique
+  supplierId    String
+  date          DateTime  @default(now())
+  expectedDate  DateTime?
+  subtotal      Float     @default(0)
+  totalGst      Float     @default(0)
+  grandTotal    Float     @default(0)
+  status        String    @default("Draft") // Draft, Sent, Partial, Received, Cancelled
+  notes         String?
+  userId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  supplier Supplier     @relation(fields: [supplierId], references: [id])
+  user     User?        @relation(fields: [userId], references: [id])
+  purchases Purchase[]
+  items    PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String  @id @default(cuid())
+  purchaseOrderId String
+  medicineId      String
+  medicineName    String?
+  quantity        Int
+  unitType        String  @default("strip")
+  purchaseRate    Float?
+  gstPercent      Float   @default(12)
+  notes           String?
+  receivedQty     Int     @default(0)
+  createdAt       DateTime @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  medicine       Medicine    @relation(fields: [medicineId], references: [id])
+}
+
+// ==================== DOCTORS ====================
+
+model Doctor {
+  id             String   @id @default(cuid())
+  name           String
+  qualification  String?
+  specialty      String?
+  phone          String?
+  email          String?
+  address        String?
+  registrationNo String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  sales         Sale[]
+  prescriptions Prescription[]
+}
+
 // ==================== CUSTOMERS ====================
 
 model Customer {
-  id          String   @id @default(cuid())
-  name        String
-  phone       String?
-  email       String?
-  address     String?
-  doctorName  String?
-  balance     Float    @default(0) // outstanding balance
-  totalPurchases Float  @default(0)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  phone           String?
+  email           String?
+  address         String?
+  doctorName      String?
+  balance         Float    @default(0) // outstanding balance
+  totalPurchases  Float    @default(0)
+  loyaltyPoints   Int      @default(0)
+  creditLimit     Float    @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  sales      Sale[]
-  payments   Payment[]
-  returns    Return[]
+  sales         Sale[]
+  payments      Payment[]
+  returns       Return[]
+  prescriptions Prescription[]
+}
+
+// ==================== PRESCRIPTIONS ====================
+
+model Prescription {
+  id             String   @id @default(cuid())
+  prescriptionNo String   @unique
+  customerId     String?
+  doctorId       String?
+  date           DateTime @default(now())
+  imageUrl       String?
+  notes          String?
+  status         String   @default("Active") // Active, Completed, Expired
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+  doctor   Doctor?   @relation(fields: [doctorId], references: [id])
+  sales    Sale[]
+  items    PrescriptionItem[]
+}
+
+model PrescriptionItem {
+  id             String   @id @default(cuid())
+  prescriptionId String
+  medicineId     String
+  dosage         String?
+  duration       String?
+  frequency      String?
+  notes          String?
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id])
+  medicine     Medicine    @relation(fields: [medicineId], references: [id])
 }
 
 // ==================== SALES ====================
 
 model Sale {
-  id           String   @id @default(cuid())
-  invoiceNo    String   @unique
-  customerId   String?
-  customerName String?  // name for walk-in customers (stored directly on sale)
-  date         DateTime @default(now())
-  subtotal    Float    @default(0)
-  totalDiscount Float   @default(0)
-  cgst        Float    @default(0)
-  sgst        Float    @default(0)
-  igst        Float    @default(0)
-  totalGst    Float    @default(0)
-  grandTotal  Float    @default(0)
-  paidAmount  Float    @default(0)
-  balanceDue  Float    @default(0)
-  paymentMode String   @default("Cash") // Cash, Card, UPI, Credit
-  notes       String?
-  userId      String?
-  status      String   @default("Completed") // Completed, Returned, Cancelled
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  invoiceNo      String   @unique
+  customerId     String?
+  customerName   String?  // name for walk-in customers
+  doctorId       String?  // prescribing doctor
+  prescriptionId String?  // linked prescription
+  date           DateTime @default(now())
+  subtotal       Float    @default(0)
+  totalDiscount  Float    @default(0)
+  cgst           Float    @default(0)
+  sgst           Float    @default(0)
+  igst           Float    @default(0)
+  totalGst       Float    @default(0)
+  grandTotal     Float    @default(0)
+  paidAmount     Float    @default(0)
+  balanceDue     Float    @default(0)
+  paymentMode    String   @default("Cash") // Cash, Card, UPI, Credit
+  notes          String?
+  loyaltyPointsUsed  Int @default(0)
+  loyaltyPointsEarned Int @default(0)
+  userId         String?
+  status         String   @default("Completed") // Completed, Returned, Cancelled
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  customer Customer? @relation(fields: [customerId], references: [id])
-  user     User?     @relation(fields: [userId], references: [id])
-  items    SaleItem[]
-  payments Payment[]
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
+  doctor      Doctor?      @relation(fields: [doctorId], references: [id])
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id])
+  items       SaleItem[]
+  payments    Payment[]
 }
 
 model SaleItem {
@@ -313,12 +441,42 @@ model ReturnItem {
   batch    MedicineBatch? @relation(fields: [batchId], references: [id])
 }
 
+// ==================== DAY CLOSING ====================
+
+model DayClose {
+  id               String   @id @default(cuid())
+  date             DateTime @unique
+  openedBy         String?
+  closedBy         String?
+  openCash         Float    @default(0)
+  closeCash        Float    @default(0)
+  totalSales       Float    @default(0)
+  totalCashSales   Float    @default(0)
+  totalCardSales   Float    @default(0)
+  totalUpiSales    Float    @default(0)
+  totalCreditSales Float    @default(0)
+  totalReturns     Float    @default(0)
+  totalPurchases   Float    @default(0)
+  totalExpenses    Float    @default(0)
+  expectedCash     Float    @default(0)
+  difference       Float    @default(0)
+  totalInvoices    Int      @default(0)
+  totalReturnNotes Int      @default(0)
+  status           String   @default("Open") // Open, Closed
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  openedByUser User? @relation("DayCloseOpener", fields: [openedBy], references: [id])
+  closedByUser User? @relation("DayCloseCloser", fields: [closedBy], references: [id])
+}
+
 // ==================== AUDIT LOGS ====================
 
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
-  action    String   // LOGIN, SALE, PURCHASE, RETURN, DELETE, ADJUSTMENT
+  action    String   // LOGIN, SALE, PURCHASE, RETURN, DELETE, ADJUSTMENT, DAY_CLOSE
   module    String   // sales, purchases, medicines, settings, etc
   details   String?
   ipAddress String?

@@ -26,6 +26,15 @@ export async function GET(
             paidAmount: true,
             balanceDue: true,
             paymentMode: true,
+            loyaltyPointsEarned: true,
+            loyaltyPointsUsed: true,
+            items: {
+              select: {
+                medicineName: true,
+                quantity: true,
+                total: true,
+              },
+            },
           },
         },
         payments: {
@@ -39,7 +48,31 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Customer not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: customer });
+    // Calculate monthly loyalty points earned
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const monthlySales = await db.sale.aggregate({
+      where: {
+        customerId: id,
+        status: 'Completed',
+        date: { gte: startOfMonth },
+      },
+      _sum: {
+        loyaltyPointsEarned: true,
+      },
+    });
+
+    const monthlyPointsEarned = monthlySales._sum.loyaltyPointsEarned || 0;
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...customer,
+        monthlyPointsEarned,
+      },
+    });
   } catch (error) {
     console.error('Customer get error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
@@ -60,6 +93,19 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Customer not found' }, { status: 404 });
     }
 
+    // Handle loyalty points adjustment
+    let loyaltyPoints = customer.loyaltyPoints;
+    if (body.loyaltyPoints !== undefined) {
+      // Set absolute value
+      loyaltyPoints = body.loyaltyPoints;
+    } else if (body.adjustPoints !== undefined) {
+      // Add/subtract points
+      loyaltyPoints = customer.loyaltyPoints + body.adjustPoints;
+      if (loyaltyPoints < 0) {
+        loyaltyPoints = 0;
+      }
+    }
+
     const updated = await db.customer.update({
       where: { id },
       data: {
@@ -71,6 +117,8 @@ export async function PUT(
         balance: body.balance !== undefined ? body.balance : customer.balance,
         totalPurchases: body.totalPurchases !== undefined ? body.totalPurchases : customer.totalPurchases,
         active: body.active !== undefined ? body.active : customer.active,
+        loyaltyPoints,
+        creditLimit: body.creditLimit !== undefined ? body.creditLimit : customer.creditLimit,
       },
     });
 

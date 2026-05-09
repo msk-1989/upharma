@@ -23,7 +23,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, customerName, paymentMode, items, userId } = body;
+    const { customerId, customerName, paymentMode, items, userId, loyaltyPointsUsed } = body;
 
     let subtotal = 0;
     let totalGst = 0;
@@ -81,6 +81,29 @@ export async function POST(request: NextRequest) {
 
     grandTotal = subtotal + totalGst;
 
+    // Loyalty points calculation
+    const pointsToUse = Math.max(0, Math.floor(Number(loyaltyPointsUsed) || 0));
+    const maxDiscountFromPoints = grandTotal * 0.1; // Max 10% of bill
+    const pointsDiscount = Math.min(pointsToUse, maxDiscountFromPoints); // ₹1 per point
+    const loyaltyPointsEarned = Math.floor(grandTotal / 100);
+
+    // Apply loyalty points discount
+    const finalGrandTotal = Math.round((grandTotal - pointsDiscount) * 100) / 100;
+
+    // Credit limit check
+    let creditWarning: string | null = null;
+    let customerData: any = null;
+    if (customerId) {
+      customerData = await db.customer.findUnique({ where: { id: customerId } });
+      if (customerData && customerData.creditLimit > 0) {
+        const projectedBalance = customerData.balance + finalGrandTotal;
+        if (projectedBalance > customerData.creditLimit) {
+          const excess = Math.round((projectedBalance - customerData.creditLimit) * 100) / 100;
+          creditWarning = `This sale will exceed customer's credit limit by ₹${excess.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+      }
+    }
+
     // Get next invoice number using max query with retry
     let invoiceNo = '';
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -110,18 +133,46 @@ export async function POST(request: NextRequest) {
         cgst: 0,
         sgst: 0,
         totalGst: Math.round(totalGst * 100) / 100,
-        grandTotal: Math.round(grandTotal * 100) / 100,
-        paidAmount: Math.round(grandTotal * 100) / 100,
+        grandTotal: Math.round(finalGrandTotal * 100) / 100,
+        paidAmount: Math.round(finalGrandTotal * 100) / 100,
         balanceDue: 0,
         paymentMode: paymentMode || 'Cash',
         userId: userId || null,
         status: 'Completed',
+        loyaltyPointsUsed: pointsToUse,
+        loyaltyPointsEarned,
         items: { create: saleItemsData },
       },
       include: { customer: { select: { name: true } }, items: true },
     });
 
-    return NextResponse.json({ success: true, data: sale }, { status: 201 });
+    // Update customer: loyalty points, balance, total purchases
+    if (customerId && customerData) {
+      await db.customer.update({
+        where: { id: customerId },
+        data: {
+          loyaltyPoints: {
+            increment: loyaltyPointsEarned - pointsToUse,
+          },
+          balance: {
+            increment: finalGrandTotal,
+          },
+          totalPurchases: {
+            increment: finalGrandTotal,
+          },
+        },
+      });
+    }
+
+    const response: any = { success: true, data: sale };
+    if (creditWarning) {
+      response.warning = creditWarning;
+    }
+    if (loyaltyPointsEarned > 0) {
+      response.loyaltyPointsEarned = loyaltyPointsEarned;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
