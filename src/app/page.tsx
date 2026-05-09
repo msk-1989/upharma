@@ -7,7 +7,14 @@ import { Header } from '@/components/upharma/header';
 import { Dashboard } from '@/components/upharma/dashboard';
 import { SettingsPage } from '@/components/upharma/settings';
 import { MedicinesPage } from '@/components/upharma/medicines';
-import { PlaceholderPage } from '@/components/upharma/placeholder-page';
+import { POSBillingPage } from '@/components/upharma/pos-billing';
+import { InventoryPage } from '@/components/upharma/inventory';
+import { PurchasesPage } from '@/components/upharma/purchases';
+import { CustomersPage } from '@/components/upharma/customers';
+import { SuppliersPage } from '@/components/upharma/suppliers';
+import { ReturnsPage } from '@/components/upharma/returns';
+import { ReportsPage } from '@/components/upharma/reports';
+import { BackupPage } from '@/components/upharma/backup';
 import { LoginScreen } from '@/components/upharma/login';
 
 interface AuthUser {
@@ -28,21 +35,21 @@ function PageContent() {
     case 'medicines':
       return <MedicinesPage />;
     case 'pos-billing':
-      return <PlaceholderPage pageKey="pos-billing" />;
+      return <POSBillingPage />;
     case 'inventory':
-      return <PlaceholderPage pageKey="inventory" />;
+      return <InventoryPage />;
     case 'purchases':
-      return <PlaceholderPage pageKey="purchases" />;
+      return <PurchasesPage />;
     case 'customers':
-      return <PlaceholderPage pageKey="customers" />;
+      return <CustomersPage />;
     case 'suppliers':
-      return <PlaceholderPage pageKey="suppliers" />;
+      return <SuppliersPage />;
     case 'returns':
-      return <PlaceholderPage pageKey="returns" />;
+      return <ReturnsPage />;
     case 'reports':
-      return <PlaceholderPage pageKey="reports" />;
+      return <ReportsPage />;
     case 'backup':
-      return <PlaceholderPage pageKey="backup" />;
+      return <BackupPage />;
     default:
       return <Dashboard />;
   }
