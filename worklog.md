@@ -21,3 +21,34 @@ Stage Summary:
 - Settings: Pharmacy details, GST configuration, print settings, user management, invoice settings
 - Sales API with FIFO stock deduction and GST calculation
 - Purchases API with batch creation and auto-stock update
+
+---
+Task ID: 2
+Agent: Fullstack Subagent
+Task: Fix Settings Save + Add UPI ID + Doctor Name + Invoice QR Code
+
+Work Log:
+- Fixed Settings Save bug: Removed all useEffect sync hooks from StoreTab, GSTTab, PrintTab, InvoiceTab
+  - Root cause: useEffect(() => { setX(get('x', default)); }, [get]) fired on every `get` change (which changes after save), overwriting user edits
+  - Fix: Used lazy useState initializers () => get('x', default) which only run once on mount. Since SettingsPage waits for loading=false before rendering tabs, get() already returns correct API values on first render.
+- Added UPI ID field to Store tab settings (StoreSettings interface, DEFAULT_STORE, getStoreInfo callback)
+- Added Doctor Name input field to POS Billing (after walk-in customer name input, always visible)
+  - Added doctorName state, included in held bills data, included in saleData for print
+  - Reset doctorName after sale completion
+- Updated Sales API POST handler to accept doctorName from request body
+- Updated InvoicePrintDialog/InvoicePrintArea to show Doctor Name row (Dr.:) above Customer row
+- Added UPI QR Code to invoice footer using dynamic import of qrcode package
+  - Generates UPI deep link: upi://pay?pa={UPI_ID}&pn={STORE_NAME}&am={AMOUNT}&cu=INR&tn={INVOICE_NO}
+  - QR code (80x80px) shown right-aligned in footer with "Scan to Pay via UPI" label
+  - QR only renders when upiId is configured in settings
+- Updated STORE_DEFAULTS and loadStoreSettings() in invoice-print.tsx to include upiId
+- Updated InvoiceData interface to include doctorName field
+- Updated InvoiceSamplePreview with Doctor Name, Patient Name sample data and QR code
+- Updated StoreInfo interface to include upiId
+
+Stage Summary:
+- Settings save now works correctly - user edits persist after save
+- UPI ID configurable in Settings > Store tab
+- Doctor Name captured per sale in POS Billing
+- Invoice prints with Dr. Name, Patient Name, and UPI QR Code
+- All modified files pass lint with zero new errors

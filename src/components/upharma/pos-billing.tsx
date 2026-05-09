@@ -190,6 +190,7 @@ export function POSBillingPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('walk-in');
   const [walkInCustomerName, setWalkInCustomerName] = useState<string>('');
+  const [doctorName, setDoctorName] = useState<string>('');
   const [paymentMode, setPaymentMode] = useState<string>('Cash');
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
@@ -214,6 +215,7 @@ export function POSBillingPage() {
     cart: CartItem[];
     customerId: string;
     customerName: string;
+    doctorName: string;
     heldAt: string;
   }>>([]);
   const [showHeldBills, setShowHeldBills] = useState(false);
@@ -446,6 +448,7 @@ export function POSBillingPage() {
       cart: [...cart],
       customerId: selectedCustomerId,
       customerName: selectedCustomerId === 'walk-in' ? walkInCustomerName.trim() : (selectedCustomer?.name || ''),
+      doctorName: doctorName.trim(),
       heldAt: new Date().toISOString(),
     }];
     const trimmed = held.slice(-5); // Keep last 5
@@ -467,6 +470,7 @@ export function POSBillingPage() {
     setCart(bill.cart);
     setSelectedCustomerId(bill.customerId);
     setWalkInCustomerName(bill.customerName || '');
+    setDoctorName(bill.doctorName || '');
     setCashReceived('');
     setUseLoyaltyPoints(false);
     setCreditWarning(null);
@@ -821,6 +825,7 @@ export function POSBillingPage() {
       const saleData = {
         invoiceNo: data.data.invoiceNo,
         customerName: data.data.customerName || customerName || null,
+        doctorName: doctorName.trim() || null,
         subtotal: data.data.subtotal,
         cgst: data.data.totalGst / 2,
         sgst: data.data.totalGst / 2,
@@ -860,6 +865,7 @@ export function POSBillingPage() {
       clearCart();
       setSelectedCustomerId('walk-in');
       setWalkInCustomerName('');
+      setDoctorName('');
       setPaymentMode('Cash');
       setUseLoyaltyPoints(false);
       setCreditWarning(null);
@@ -1577,6 +1583,20 @@ export function POSBillingPage() {
                   />
                 </div>
               )}
+
+              {/* Doctor Name Input */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">
+                  Doctor Name <span className="text-gray-400 font-normal">(optional)</span>
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="Dr. Name (optional)"
+                  className="h-9 text-sm"
+                  value={doctorName}
+                  onChange={(e) => setDoctorName(e.target.value)}
+                />
+              </div>
 
               {/* Selected Customer Info with Loyalty & Credit */}
               {selectedCustomer && (

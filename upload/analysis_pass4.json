@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Line 1 (top of bill): जयश्री अपूर्वा ड्रग्स जयराज राजेंद्र  \nLine 2: श्रीराम ३ नंबर शिवाजी रोड, अलीगढ़ रोड, बदरपुर, गोरखपुर (GST No. 27ABDPF4456H1ZR)  \nLine 3: Cash Memo  \nLine 4: Date :  \n\nTABLE:  \n- Column headers: Particular's, Qty., Name of comp., B.No., Exp.Dt., Amount Rs. Ps.  \n- Table body rows: 8 (excluding header)  \n- Horizontal lines: Yes (separating rows)  \n\nFOOTER:  \n- DL number: 20-339158, 21-339159  \n- Hindi text: हम दवाओं की कीमतें उपभोक्ता के हित के अनुसार तय करते हैं.  \n- Q.P.Sign and Total: Yes, on the same line",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1778401585,
+  "id": "202605101626170f7cb9e1b9d940b6",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202605101626170f7cb9e1b9d940b6",
+  "usage": {
+    "completion_tokens": 299,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2701,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 3000
+  }
+}

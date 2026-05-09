@@ -38,6 +38,7 @@ interface StoreSettings {
   drugLicense: string;
   fssaiNo: string;
   gstNumber: string;
+  upiId: string;
 }
 
 // ==================== DEFAULT VALUES ====================
@@ -51,6 +52,7 @@ const DEFAULT_STORE: StoreSettings = {
   drugLicense: '',
   fssaiNo: '',
   gstNumber: '',
+  upiId: '',
 };
 
 const DEFAULT_PRINT = {
@@ -160,28 +162,22 @@ function SaveButton({ onClick, saving }: { onClick: () => void; saving: boolean 
 }
 
 // ==================== STORE TAB ====================
+// NOTE: No useEffect needed here. SettingsPage waits for loading=false before
+// rendering tabs, so get() already returns correct API values on first mount.
+// useState initializer only runs once, so saves won't reset form values.
 
 function StoreTab({ get, saveSettings, saving }: { get: (k: string, f?: string) => string; saveSettings: (s: Record<string, string>) => Promise<void>; saving: boolean }) {
-  const [storeName, setStoreName] = useState(get('storeName', DEFAULT_STORE.storeName));
-  const [phone, setPhone] = useState(get('phone', DEFAULT_STORE.phone));
-  const [address, setAddress] = useState(get('address', DEFAULT_STORE.address));
-  const [email, setEmail] = useState(get('email', DEFAULT_STORE.email));
-  const [pincode, setPincode] = useState(get('pincode', DEFAULT_STORE.pincode));
-  const [drugLicense, setDrugLicense] = useState(get('drugLicense', DEFAULT_STORE.drugLicense));
-  const [fssaiNo, setFssaiNo] = useState(get('fssaiNo', DEFAULT_STORE.fssaiNo));
-  const [gstNumber, setGstNumber] = useState(get('gstNumber', DEFAULT_STORE.gstNumber));
+  const [storeName, setStoreName] = useState(() => get('storeName', DEFAULT_STORE.storeName));
+  const [phone, setPhone] = useState(() => get('phone', DEFAULT_STORE.phone));
+  const [address, setAddress] = useState(() => get('address', DEFAULT_STORE.address));
+  const [email, setEmail] = useState(() => get('email', DEFAULT_STORE.email));
+  const [pincode, setPincode] = useState(() => get('pincode', DEFAULT_STORE.pincode));
+  const [drugLicense, setDrugLicense] = useState(() => get('drugLicense', DEFAULT_STORE.drugLicense));
+  const [fssaiNo, setFssaiNo] = useState(() => get('fssaiNo', DEFAULT_STORE.fssaiNo));
+  const [gstNumber, setGstNumber] = useState(() => get('gstNumber', DEFAULT_STORE.gstNumber));
+  const [upiId, setUpiId] = useState(() => get('upiId', DEFAULT_STORE.upiId));
 
-  // Sync from API when settings load
-  useEffect(() => { setStoreName(get('storeName', DEFAULT_STORE.storeName)); }, [get]);
-  useEffect(() => { setPhone(get('phone', DEFAULT_STORE.phone)); }, [get]);
-  useEffect(() => { setAddress(get('address', DEFAULT_STORE.address)); }, [get]);
-  useEffect(() => { setEmail(get('email', DEFAULT_STORE.email)); }, [get]);
-  useEffect(() => { setPincode(get('pincode', DEFAULT_STORE.pincode)); }, [get]);
-  useEffect(() => { setDrugLicense(get('drugLicense', DEFAULT_STORE.drugLicense)); }, [get]);
-  useEffect(() => { setFssaiNo(get('fssaiNo', DEFAULT_STORE.fssaiNo)); }, [get]);
-  useEffect(() => { setGstNumber(get('gstNumber', DEFAULT_STORE.gstNumber)); }, [get]);
-
-  const handleSave = () => saveSettings({ storeName, phone, address, email, pincode, drugLicense, fssaiNo, gstNumber });
+  const handleSave = () => saveSettings({ storeName, phone, address, email, pincode, drugLicense, fssaiNo, gstNumber, upiId });
 
   return (
     <div className="space-y-6">
@@ -247,6 +243,12 @@ function StoreTab({ get, saveSettings, saving }: { get: (k: string, f?: string) 
                 placeholder="e.g. 27AABCU9603R1ZM"
                 className="border-border/80 focus:border-emerald-400 focus:ring-emerald-400" />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="upiId" className="text-sm font-medium text-gray-700">UPI ID</Label>
+              <Input id="upiId" value={upiId} onChange={(e) => setUpiId(e.target.value)}
+                placeholder="e.g. pharmacy@upi"
+                className="border-border/80 focus:border-emerald-400 focus:ring-emerald-400" />
+            </div>
           </div>
           <SaveButton onClick={handleSave} saving={saving} />
         </CardContent>
@@ -258,17 +260,11 @@ function StoreTab({ get, saveSettings, saving }: { get: (k: string, f?: string) 
 // ==================== GST TAB ====================
 
 function GSTTab({ get, saveSettings, saving }: { get: (k: string, f?: string) => string; saveSettings: (s: Record<string, string>) => Promise<void>; saving: boolean }) {
-  const [gstEnabled, setGstEnabled] = useState(get('gstEnabled', DEFAULT_GST.gstEnabled) === 'true');
-  const [gstin, setGstin] = useState(get('gstin', DEFAULT_GST.gstin));
-  const [cgstRate, setCgstRate] = useState(get('cgstRate', DEFAULT_GST.cgstRate));
-  const [sgstRate, setSgstRate] = useState(get('sgstRate', DEFAULT_GST.sgstRate));
-  const [igstRate, setIgstRate] = useState(get('igstRate', DEFAULT_GST.igstRate));
-
-  useEffect(() => { setGstEnabled(get('gstEnabled', DEFAULT_GST.gstEnabled) === 'true'); }, [get]);
-  useEffect(() => { setGstin(get('gstin', DEFAULT_GST.gstin)); }, [get]);
-  useEffect(() => { setCgstRate(get('cgstRate', DEFAULT_GST.cgstRate)); }, [get]);
-  useEffect(() => { setSgstRate(get('sgstRate', DEFAULT_GST.sgstRate)); }, [get]);
-  useEffect(() => { setIgstRate(get('igstRate', DEFAULT_GST.igstRate)); }, [get]);
+  const [gstEnabled, setGstEnabled] = useState(() => get('gstEnabled', DEFAULT_GST.gstEnabled) === 'true');
+  const [gstin, setGstin] = useState(() => get('gstin', DEFAULT_GST.gstin));
+  const [cgstRate, setCgstRate] = useState(() => get('cgstRate', DEFAULT_GST.cgstRate));
+  const [sgstRate, setSgstRate] = useState(() => get('sgstRate', DEFAULT_GST.sgstRate));
+  const [igstRate, setIgstRate] = useState(() => get('igstRate', DEFAULT_GST.igstRate));
 
   const handleSave = () => saveSettings({ gstEnabled: String(gstEnabled), gstin, cgstRate, sgstRate, igstRate });
 
@@ -327,15 +323,10 @@ function GSTTab({ get, saveSettings, saving }: { get: (k: string, f?: string) =>
 // ==================== PRINT TAB ====================
 
 function PrintTab({ get, saveSettings, saving }: { get: (k: string, f?: string) => string; saveSettings: (s: Record<string, string>) => Promise<void>; saving: boolean }) {
-  const [paperSize, setPaperSize] = useState(get('paperSize', DEFAULT_PRINT.paperSize));
-  const [printCopies, setPrintCopies] = useState(get('printCopies', DEFAULT_PRINT.printCopies));
-  const [invoiceHeader, setInvoiceHeader] = useState(get('invoiceHeader', DEFAULT_PRINT.invoiceHeader));
-  const [invoiceFooter, setInvoiceFooter] = useState(get('invoiceFooter', DEFAULT_PRINT.invoiceFooter));
-
-  useEffect(() => { setPaperSize(get('paperSize', DEFAULT_PRINT.paperSize)); }, [get]);
-  useEffect(() => { setPrintCopies(get('printCopies', DEFAULT_PRINT.printCopies)); }, [get]);
-  useEffect(() => { setInvoiceHeader(get('invoiceHeader', DEFAULT_PRINT.invoiceHeader)); }, [get]);
-  useEffect(() => { setInvoiceFooter(get('invoiceFooter', DEFAULT_PRINT.invoiceFooter)); }, [get]);
+  const [paperSize, setPaperSize] = useState(() => get('paperSize', DEFAULT_PRINT.paperSize));
+  const [printCopies, setPrintCopies] = useState(() => get('printCopies', DEFAULT_PRINT.printCopies));
+  const [invoiceHeader, setInvoiceHeader] = useState(() => get('invoiceHeader', DEFAULT_PRINT.invoiceHeader));
+  const [invoiceFooter, setInvoiceFooter] = useState(() => get('invoiceFooter', DEFAULT_PRINT.invoiceFooter));
 
   const handleSave = () => saveSettings({ paperSize, printCopies, invoiceHeader, invoiceFooter });
 
@@ -391,17 +382,13 @@ function InvoiceTab({ get, saveSettings, saving, getStoreInfo }: {
   get: (k: string, f?: string) => string;
   saveSettings: (s: Record<string, string>) => Promise<void>;
   saving: boolean;
-  getStoreInfo: () => { storeName: string; phone: string; address: string; gstNumber: string; drugLicense: string; fssaiNo: string };
+  getStoreInfo: () => { storeName: string; phone: string; address: string; gstNumber: string; drugLicense: string; fssaiNo: string; upiId: string };
 }) {
-  const [invoicePrefix, setInvoicePrefix] = useState(get('invoicePrefix', DEFAULT_INVOICE.invoicePrefix));
-  const [nextInvoiceNo, setNextInvoiceNo] = useState(get('nextInvoiceNo', DEFAULT_INVOICE.nextInvoiceNo));
-  const [termsConditions, setTermsConditions] = useState(get('termsConditions', DEFAULT_INVOICE.termsConditions));
+  const [invoicePrefix, setInvoicePrefix] = useState(() => get('invoicePrefix', DEFAULT_INVOICE.invoicePrefix));
+  const [nextInvoiceNo, setNextInvoiceNo] = useState(() => get('nextInvoiceNo', DEFAULT_INVOICE.nextInvoiceNo));
+  const [termsConditions, setTermsConditions] = useState(() => get('termsConditions', DEFAULT_INVOICE.termsConditions));
 
   const [showPreview, setShowPreview] = useState(false);
-
-  useEffect(() => { setInvoicePrefix(get('invoicePrefix', DEFAULT_INVOICE.invoicePrefix)); }, [get]);
-  useEffect(() => { setNextInvoiceNo(get('nextInvoiceNo', DEFAULT_INVOICE.nextInvoiceNo)); }, [get]);
-  useEffect(() => { setTermsConditions(get('termsConditions', DEFAULT_INVOICE.termsConditions)); }, [get]);
 
   const handleSave = () => saveSettings({ invoicePrefix, nextInvoiceNo, termsConditions });
 
@@ -587,6 +574,7 @@ export function SettingsPage() {
     gstNumber: get('gstNumber', DEFAULT_STORE.gstNumber),
     drugLicense: get('drugLicense', DEFAULT_STORE.drugLicense),
     fssaiNo: get('fssaiNo', DEFAULT_STORE.fssaiNo),
+    upiId: get('upiId', DEFAULT_STORE.upiId),
   }), [get]);
 
   if (loading) {

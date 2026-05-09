@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 // ==================== TYPES ====================
 
@@ -21,6 +21,7 @@ interface InvoiceItem {
 interface InvoiceData {
   invoiceNo: string;
   customerName: string | null;
+  doctorName: string | null;
   subtotal: number;
   cgst: number;
   sgst: number;
@@ -43,6 +44,7 @@ const STORE_DEFAULTS = {
   gstNo: '27XXXXX1234X1ZX',
   drugLicenseNo: 'DL-2024000001',
   fssaiNo: '12345678901234',
+  upiId: '',
 };
 
 // Cached settings loaded from API
@@ -61,6 +63,7 @@ export async function loadStoreSettings(): Promise<typeof STORE_DEFAULTS> {
         gstNo: data.data.gstNumber || STORE_DEFAULTS.gstNo,
         drugLicenseNo: data.data.drugLicense || STORE_DEFAULTS.drugLicenseNo,
         fssaiNo: data.data.fssaiNo || STORE_DEFAULTS.fssaiNo,
+        upiId: data.data.upiId || STORE_DEFAULTS.upiId,
       };
       return _cachedStore;
     }
@@ -92,6 +95,12 @@ function formatExpiry(dateStr: string | null): string {
   return `${month}-${year}`;
 }
 
+// ==================== QR CODE GENERATOR ====================
+
+function generateUpiString(upiId: string, storeName: string, amount: number, invoiceNo: string): string {
+  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(storeName)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invoiceNo)}`;
+}
+
 // ==================== SINGLE INVOICE TEMPLATE ====================
 
 function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: string }) {
@@ -103,6 +112,25 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
 
   const itemTotal = (item: InvoiceItem) => item.total;
   const store = getStore();
+
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (store.upiId && data.grandTotal > 0) {
+      const upiString = generateUpiString(store.upiId, store.name, data.grandTotal, data.invoiceNo);
+      import('qrcode').then((QRCode) => {
+        QRCode.toDataURL(upiString, { width: 150, margin: 1 }).then((url: string) => {
+          setQrDataUrl(url);
+        }).catch(() => {
+          setQrDataUrl(null);
+        });
+      }).catch(() => {
+        setQrDataUrl(null);
+      });
+    } else {
+      setQrDataUrl(null);
+    }
+  }, [store.upiId, store.name, data.grandTotal, data.invoiceNo]);
 
   return (
     <div className="invoice-page" style={{ pageBreakInside: 'avoid' }}>
@@ -187,12 +215,24 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
         </span>
       </div>
 
-      {/* Customer & Doctor */}
+      {/* Customer, Doctor & Patient */}
       <div style={{ marginBottom: '4px', padding: '0 4px' }}>
+        {data.doctorName && (
+          <div style={{
+            fontSize: '10px',
+            color: '#333',
+            marginBottom: '1px',
+            borderBottom: '1px dotted #999',
+            paddingBottom: '1px',
+          }}>
+            <span style={{ fontWeight: 600 }}>Dr.: </span>
+            <span>{data.doctorName}</span>
+          </div>
+        )}
         <div style={{
           fontSize: '10px',
           color: '#333',
-          marginBottom: '2px',
+          marginBottom: '1px',
           borderBottom: '1px dotted #999',
           paddingBottom: '1px',
         }}>
@@ -402,40 +442,66 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer with QR Code */}
       <div style={{
         borderTop: '1px solid #CC0000',
         paddingTop: '3px',
         marginTop: '2px',
         padding: '3px 4px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
       }}>
-        <p style={{
-          textAlign: 'center',
-          fontSize: '8px',
-          color: '#555',
-          margin: '0 0 2px 0',
-          fontStyle: 'italic',
-        }}>
-          Thank you for your purchase! Visit again.
-        </p>
-        <p style={{
-          textAlign: 'center',
-          fontSize: '7px',
-          color: '#888',
-          margin: '0 0 1px 0',
-        }}>
-          Goods once sold will not be taken back or exchanged.
-        </p>
-        <p style={{
-          textAlign: 'center',
-          fontSize: '7px',
-          color: '#999',
-          margin: '0',
-        }}>
-          {store.drugLicenseNo && <span>DL No: {store.drugLicenseNo}</span>}
-          {store.drugLicenseNo && store.fssaiNo && <span> | </span>}
-          {store.fssaiNo && <span>FSSAI: {store.fssaiNo}</span>}
-        </p>
+        <div style={{ flex: 1 }}>
+          <p style={{
+            textAlign: 'center',
+            fontSize: '8px',
+            color: '#555',
+            margin: '0 0 2px 0',
+            fontStyle: 'italic',
+          }}>
+            Thank you for your purchase! Visit again.
+          </p>
+          <p style={{
+            textAlign: 'center',
+            fontSize: '7px',
+            color: '#888',
+            margin: '0 0 1px 0',
+          }}>
+            Goods once sold will not be taken back or exchanged.
+          </p>
+          <p style={{
+            textAlign: 'center',
+            fontSize: '7px',
+            color: '#999',
+            margin: '0',
+          }}>
+            {store.drugLicenseNo && <span>DL No: {store.drugLicenseNo}</span>}
+            {store.drugLicenseNo && store.fssaiNo && <span> | </span>}
+            {store.fssaiNo && <span>FSSAI: {store.fssaiNo}</span>}
+          </p>
+        </div>
+        {qrDataUrl && (
+          <div style={{ marginLeft: '8px', textAlign: 'center', flexShrink: 0 }}>
+            <img
+              src={qrDataUrl}
+              alt="UPI QR Code"
+              style={{
+                width: '80px',
+                height: '80px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+              }}
+            />
+            <p style={{
+              fontSize: '6px',
+              color: '#888',
+              margin: '1px 0 0 0',
+            }}>
+              Scan to Pay via UPI
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

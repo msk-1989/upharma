@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "### Line-by-Line Transcription (Top to Bottom, Left to Right):  \n1. **Text**: श्रीमती अशोक अग्रवाल ३ ईस जनरल स्टोर्स वेदिशा रिफिल्स  \n   **Bold**: Yes  \n   **Size**: Larger than normal body text  \n   **Color**: Dark (black)  \n\n2. **Text**: श्रीमती ३ ईस शोपी, आईएचएस, गोविंद राम रोड (GST No. 27ABDPF4456H1ZR)  \n   **Bold**: No  \n   **Size**: Normal body text  \n   **Color**: Dark (black)  \n\n3. **Text**: No 25989  \n   **Bold**: Yes  \n   **Size**: Larger than normal body text  \n   **Color**: Red  \n\n4. **Text**: Cash Memo  \n   **Bold**: Yes  \n   **Size**: Normal body text  \n   **Color**: White (on red background)  \n\n5. **Text**: Date :  \n   **Bold**: No  \n   **Size**: Normal body text  \n   **Color**: Dark (black)  \n\n6. **Text**: Patient's Name & Add ___________________________  \n   **Bold**: No  \n   **Size**: Normal body text  \n   **Color**: Dark (black)  \n\n7. **Text**: ___________________________  \n   **Bold**: No  \n   **Size**: Normal body text  \n   **Color**: Dark (black)  \n\n8. **Text**: Doctor's Name & Add ___________________________  \n   **Bold**: No  \n   **Size**: Normal body text  \n   **Color**: Dark (black)  \n\n9. **Text**: Particular's  \n   **Bold**: Yes  \n   **Size**: Normal body text  \n   **Color**: Dark (black)  \n\n10. **Text**: Qty.  \n    **Bold**: Yes  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n11. **Text**: Name of comp.  \n    **Bold**: Yes  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n12. **Text**: B.No.  \n    **Bold**: Yes  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n13. **Text**: Exp.Dt.  \n    **Bold**: Yes  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n14. **Text**: Amount Rs. Ps.  \n    **Bold**: Yes  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n15. **Text**: (Blank row 1 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n16. **Text**: (Blank row 2 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n17. **Text**: (Blank row 3 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n18. **Text**: (Blank row 4 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n19. **Text**: (Blank row 5 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n20. **Text**: (Blank row 6 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n21. **Text**: (Blank row 7 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n22. **Text**: (Blank row 8 in table)  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n23. **Text**: DL. No. : 20-339158, 21-339159  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n24. **Text**: श्रीमती अशोक अग्रवाल वेदिषा रिफिल्स की दुकान है.  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n25. **Text**: Q.P.Sign  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n26. **Text**: Total  \n    **Bold**: No  \n    **Size**: Normal body text  \n    **Color**: Dark (black)  \n\n\n### Additional Questions:  \n- **Total table rows**: 8 (counted one by one: 8 blank rows in the table).  \n- **Column headers (left to right)**: Particular's, Qty., Name of comp., B.No., Exp.Dt., Amount Rs. Ps.  \n- **Between 'Patient' field and table**: A blank line (underline).  \n- **Between 'Doctor' field and table**: A blank line (underline).  \n- **Very last line of the document**: Total (right-aligned in the footer).  \n- **Underlines for patient/doctor info**: 2 (one for \"Patient's Name & Add\", one for \"Doctor's Name & Add\").  \n- **'No 25989' and 'Cash Memo'**: On the same line (left-aligned \"No 25989\", center-aligned \"Cash Memo\").  \n- **Exact Hindi text in footer**: श्रीमती अशोक अग्रवाल वेदिषा रिफिल्स की दुकान है.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1778401558,
+  "id": "202605101625398ec4b826a36e4757",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202605101625398ec4b826a36e4757",
+  "usage": {
+    "completion_tokens": 1319,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2706,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 4025
+  }
+}

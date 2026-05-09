@@ -23,7 +23,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, customerName, paymentMode, items, userId, loyaltyPointsUsed } = body;
+    const { customerId, customerName, doctorName, paymentMode, items, userId, loyaltyPointsUsed } = body;
 
     let subtotal = 0;
     let totalGst = 0;

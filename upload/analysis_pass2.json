@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "I'll analyze the pharmacy bill image with pixel-level precision to answer each question exhaustively:\n\nA) HEADER AREA:\n- The pharmacy name is on **one line** in Devanagari text: \"जयश्री आयुर्वेद अश्वगंधा चूर्ण जनरल मेडिसिन स्टोर\"\n- No phone number is visible anywhere in the header\n- \"No 25989\" appears as a **bill/serial number** with \"No\" label before it, positioned on the same horizontal line as the pharmacy name\n- \"Cash Memo\" is positioned **center** with a **rectangular** red background\n\nB) ADDRESS/GST LINE:\n- The address and GST information appear as **one continuous line**\n- The exact GST number is: \"27ABDPF4456H1ZR\"\n- No state code is visible in the GST number\n\nC) DATE FIELD:\n- On the same horizontal line as \"Date :\" is \"Cash Memo\" (center) and the bill number \"25989\" (left)\n- Between the GST section and the Date field is the \"Cash Memo\" label\n\nD) PATIENT/DOCTOR FIELDS:\n- There is **one blank underline** for patient name\n- There is **one blank underline** for doctor name\n- Each has **one line** (Name + Address combined on single lines)\n\nE) TABLE:\n- Total table rows (including header): **9 rows** (1 header + 8 data rows)\n- No, rows are **not numbered** (1, 2, 3...) in the first column\n- Last column header is \"Amount Rs. Ps.\" - **no 8th column** exists (7 columns total)\n- No sub-headers within the table\n\nF) FOOTER:\n- Bottom line contains: \"DL. No.: 20-339158, 21-339159\" on left, \"Q.P.Sign\" center, \"Total\" right - all on **same line**\n- No handwritten signature or stamp is visible\n- DL number text exactly: \"DL. No.: 20-339158, 21-339159\"\n\nG) VISUAL:\n- Background color: **light pink/magenta** (approximately #FFD1DC or RGB: 255, 209, 220)\n- Border/line color: **dark red/maroon** (approximately #CC0033 or RGB: 204, 0, 51)\n- All borders appear to have **uniform thickness**\n- No watermark or semi-transparent elements visible\n- No torn edges, perforations, or printing artifacts visible\n\nH) ADDITIONAL ELEMENTS:\n- Small Devanagari text at bottom: \"जयश्री आयुर्वेद अश्वगंधा चूर्ण जनरल मेडिसिन स्टोर\" (repeats pharmacy name)\n- No other tiny text or additional elements in corners detected\n\nThe bill appears to be a standard pharmacy cash memo with a simple table layout for itemized purchases, patient/doctor information fields, and standard footer information.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1778401528,
+  "id": "202605101625128d3f7f31b4504e92",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202605101625128d3f7f31b4504e92",
+  "usage": {
+    "completion_tokens": 703,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2938,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 3641
+  }
+}
