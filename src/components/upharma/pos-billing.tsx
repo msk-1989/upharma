@@ -43,6 +43,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { InvoicePrintDialog, InvoicePrintArea } from './invoice-print';
 
 // ==================== TYPES ====================
 
@@ -222,6 +223,10 @@ export function POSBillingPage() {
 
   // UI state
   const [showShortcuts, setShowShortcuts] = useState(true);
+
+  // Print state
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [lastSaleData, setLastSaleData] = useState<any>(null);
 
   const { toast } = useToast();
 
@@ -722,6 +727,24 @@ export function POSBillingPage() {
     }
   }, [selectedCustomer, cart.length, grandTotal]);
 
+  // ==================== PRINT INVOICE ====================
+
+  const handlePrintInvoice = useCallback(() => {
+    setShowPrintDialog(false);
+    setTimeout(() => {
+      window.print();
+      // Reset print data after a delay
+      setTimeout(() => {
+        setLastSaleData(null);
+      }, 500);
+    }, 100);
+  }, []);
+
+  const handleSkipPrint = useCallback(() => {
+    setShowPrintDialog(false);
+    setLastSaleData(null);
+  }, []);
+
   // ==================== COMPLETE SALE ====================
 
   const handleCompleteSale = async () => {
@@ -771,9 +794,7 @@ export function POSBillingPage() {
         throw new Error(data.error || 'Failed to complete sale');
       }
 
-      setLastInvoiceNo(data.data.invoiceNo);
-
-      // Show success toast with loyalty points earned
+      // Show success toast
       let toastDescription = `Invoice ${data.data.invoiceNo} — ${formatINR(data.data.grandTotal)}`;
       if (data.loyaltyPointsEarned > 0) {
         toastDescription += ` | Earned ${data.loyaltyPointsEarned} loyalty points ⭐`;
@@ -793,6 +814,37 @@ export function POSBillingPage() {
         });
       }
 
+      // Store sale data for print and show print dialog
+      const saleData = {
+        invoiceNo: data.data.invoiceNo,
+        customerName: data.data.customerName || customerName || null,
+        subtotal: data.data.subtotal,
+        cgst: data.data.totalGst / 2,
+        sgst: data.data.totalGst / 2,
+        totalGst: data.data.totalGst,
+        grandTotal: data.data.grandTotal,
+        loyaltyPointsUsed: data.data.loyaltyPointsUsed || 0,
+        loyaltyPointsEarned: data.loyaltyPointsEarned || 0,
+        paymentMode: data.data.paymentMode || 'Cash',
+        items: (data.data.items || []).map((item: any) => ({
+          medicineName: item.medicineName,
+          quantity: item.quantity,
+          unitType: item.unitType,
+          saleRate: item.saleRate,
+          mrp: item.mrp,
+          gstPercent: item.gstPercent,
+          batchNo: item.batchNo,
+          expiryDate: item.expiryDate,
+          cgst: item.cgst,
+          sgst: item.sgst,
+          total: item.total,
+        })),
+        createdAt: data.data.createdAt,
+      };
+
+      setLastSaleData(saleData);
+      setShowPrintDialog(true);
+
       // Reload customers to refresh loyalty points & balance
       fetch('/api/customers')
         .then((r) => r.json())
@@ -803,7 +855,6 @@ export function POSBillingPage() {
 
       // Clear cart and reload recent sales
       clearCart();
-      setLastInvoiceNo('');
       setSelectedCustomerId('walk-in');
       setWalkInCustomerName('');
       setPaymentMode('Cash');
@@ -1868,6 +1919,16 @@ export function POSBillingPage() {
           </Button>
         </div>
       </div>
+      {/* Print Dialog */}
+      <InvoicePrintDialog
+        data={lastSaleData}
+        show={showPrintDialog}
+        onClose={handleSkipPrint}
+        onPrint={handlePrintInvoice}
+      />
+
+      {/* Hidden Print Area (only rendered when printing) */}
+      <InvoicePrintArea data={lastSaleData} />
     </div>
   );
 }

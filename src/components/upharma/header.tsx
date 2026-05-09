@@ -155,9 +155,9 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
 
       {/* Right */}
       <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 lg:flex-none lg:w-[260px] justify-end flex-shrink-0">
-        <div className="text-right hidden lg:block leading-tight">
-          <p className="text-sm font-medium text-gray-700 tabular-nums">{formatTime(currentTime)}</p>
-          <p className="text-[11px] text-gray-400">{formatDate(currentTime)}</p>
+        <div className="text-right hidden lg:block leading-tight whitespace-nowrap">
+          <span className="text-sm font-medium text-gray-700 tabular-nums">{formatTime(currentTime)}</span>
+          <span className="text-[11px] text-gray-400 ml-2">{formatDate(currentTime)}</span>
         </div>
 
         {/* Keyboard Shortcuts Button */}
