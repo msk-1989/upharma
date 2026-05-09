@@ -4,7 +4,7 @@ import { compare } from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
-// POST /api/auth (general auth)
+// POST /api/auth/login
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
       const user = await db.user.findFirst({ where: { pin, active: true } });
       if (user) {
         await db.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
-        return NextResponse.json({ success: true, data: { id: user.id, username: user.username, name: user.name, role: user.role, email: user.email } });
+        return NextResponse.json({
+          success: true,
+          data: { id: user.id, username: user.username, name: user.name, role: user.role, email: user.email },
+        });
       }
       return NextResponse.json({ success: false, error: 'Invalid PIN' }, { status: 401 });
     }
@@ -35,18 +38,6 @@ export async function POST(request: NextRequest) {
       success: true,
       data: { id: user.id, username: user.username, name: user.name, role: user.role, email: user.email },
     });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
-  }
-}
-
-// GET /api/auth/users
-export async function GET() {
-  try {
-    const users = await db.user.findMany({ orderBy: { createdAt: 'asc' } });
-    const safeUsers = users.map(({ password, pin, ...u }) => u);
-    return NextResponse.json({ success: true, data: safeUsers });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
