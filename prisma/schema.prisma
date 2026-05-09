@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,314 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== AUTH & USERS ====================
+
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
+  username  String   @unique
+  name      String
+  email     String?
+  password  String
+  pin       String?  @db.VarChar(6)
+  role      String   @default("Cashier") // Admin, Manager, Cashier
+  active    Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales       Sale[]
+  purchases   Purchase[]
+  auditLogs   AuditLog[]
+  stockMovements StockMovement[]
+}
+
+// ==================== SETTINGS ====================
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Post {
+// ==================== MEDICINES ====================
+
+model Medicine {
+  id             String   @id @default(cuid())
+  name           String
+  genericName    String?
+  manufacturer   String?
+  category       String?  @default("General")
+  hsnCode        String?
+  gstPercent     Float    @default(12)
+  barcode        String?
+  baseUnit       String   @default("Tablet") // Tablet, Capsule, Bottle, Tube, etc
+  unitsPerStrip  Int      @default(10)
+  stripsPerBox   Int      @default(10)
+  allowLooseSale Boolean  @default(true)
+  purchaseRate   Float    @default(0) // per smallest unit
+  saleRate       Float    @default(0) // per smallest unit
+  mrp            Float    @default(0) // per smallest unit
+  reorderLevel   Int      @default(20)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  batches       MedicineBatch[]
+  saleItems     SaleItem[]
+  purchaseItems PurchaseItem[]
+}
+
+// ==================== MEDICINE BATCHES ====================
+
+model MedicineBatch {
+  id           String   @id @default(cuid())
+  medicineId   String
+  batchNo      String
+  expiryDate   DateTime
+  purchaseRate Float    @default(0) // per smallest unit
+  saleRate     Float    @default(0) // per smallest unit
+  mrp          Float    @default(0) // per smallest unit
+  stockQty     Int      @default(0) // ALWAYS in smallest unit
+  initialStock Int      @default(0)
+  supplierId   String?
+  purchaseDate DateTime?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  medicine     Medicine  @relation(fields: [medicineId], references: [id])
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
+  saleItems    SaleItem[]
+  purchaseItems PurchaseItem[]
+}
+
+// ==================== STOCK MOVEMENTS ====================
+
+model StockMovement {
+  id         String   @id @default(cuid())
+  medicineId String
+  batchId    String?
+  type       String   // IN (purchase/return), OUT (sale/return/damage), ADJUSTMENT
+  quantity   Int      // smallest units
+  reference  String?  // sale/purchase ID
+  notes      String?
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
+}
+
+// ==================== SUPPLIERS ====================
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactPerson String?
+  phone       String?
+  email       String?
+  address     String?
+  gstNumber   String?
+  drugLicense String?
+  balance     Float    @default(0) // outstanding balance
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchases    Purchase[]
+  batches      MedicineBatch[]
+}
+
+// ==================== PURCHASES ====================
+
+model Purchase {
+  id            String   @id @default(cuid())
+  invoiceNo     String   @unique
+  supplierId    String
+  date          DateTime @default(now())
+  subtotal      Float    @default(0)
+  cgst          Float    @default(0)
+  sgst          Float    @default(0)
+  igst          Float    @default(0)
+  totalGst      Float    @default(0)
+  grandTotal    Float    @default(0)
+  discount      Float    @default(0)
+  paidAmount    Float    @default(0)
+  balanceDue    Float    @default(0)
+  notes         String?
+  userId        String?
+  status        String   @default("Completed") // Completed, Partial, Returned
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  supplier      Supplier     @relation(fields: [supplierId], references: [id])
+  user          User?        @relation(fields: [userId], references: [id])
+  items         PurchaseItem[]
+}
+
+model PurchaseItem {
+  id           String  @id @default(cuid())
+  purchaseId   String
+  medicineId   String
+  batchId      String?
+  medicineName String?
+  batchNo      String?
+  quantity     Int     // as purchased
+  unitType     String  @default("strip") // tablet, strip, box
+  freeQuantity Int     @default(0)
+  purchaseRate Float
+  gstPercent   Float   @default(12)
+  cgst         Float   @default(0)
+  sgst         Float   @default(0)
+  igst         Float   @default(0)
+  total        Float
+  expiryDate   DateTime?
+  createdAt    DateTime @default(now())
+
+  purchase Purchase      @relation(fields: [purchaseId], references: [id])
+  medicine Medicine       @relation(fields: [medicineId], references: [id])
+  batch    MedicineBatch? @relation(fields: [batchId], references: [id])
+}
+
+// ==================== CUSTOMERS ====================
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String?
+  email       String?
+  address     String?
+  doctorName  String?
+  balance     Float    @default(0) // outstanding balance
+  totalPurchases Float  @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sales     Sale[]
+  payments  Payment[]
+}
+
+// ==================== SALES ====================
+
+model Sale {
+  id          String   @id @default(cuid())
+  invoiceNo   String   @unique
+  customerId  String?
+  date        DateTime @default(now())
+  subtotal    Float    @default(0)
+  totalDiscount Float   @default(0)
+  cgst        Float    @default(0)
+  sgst        Float    @default(0)
+  igst        Float    @default(0)
+  totalGst    Float    @default(0)
+  grandTotal  Float    @default(0)
+  paidAmount  Float    @default(0)
+  balanceDue  Float    @default(0)
+  paymentMode String   @default("Cash") // Cash, Card, UPI, Credit
+  notes       String?
+  userId      String?
+  status      String   @default("Completed") // Completed, Returned, Cancelled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
+  items    SaleItem[]
+  payments Payment[]
+}
+
+model SaleItem {
+  id            String   @id @default(cuid())
+  saleId        String
+  medicineId    String
+  batchId       String?
+  medicineName  String?
+  batchNo       String?
+  quantity      Int      // as sold
+  unitType      String   @default("strip") // tablet, strip, box
+  saleRate      Float
+  mrp           Float
+  gstPercent    Float    @default(12)
+  cgst          Float    @default(0)
+  sgst          Float    @default(0)
+  igst          Float    @default(0)
+  discount      Float    @default(0)
+  total         Float
+  expiryDate    DateTime?
+  createdAt     DateTime @default(now())
+
+  sale     Sale          @relation(fields: [saleId], references: [id])
+  medicine Medicine       @relation(fields: [medicineId], references: [id])
+  batch    MedicineBatch? @relation(fields: [batchId], references: [id])
+}
+
+// ==================== PAYMENTS ====================
+
+model Payment {
+  id          String   @id @default(cuid())
+  customerId  String?
+  saleId      String?
+  amount      Float
+  mode        String   @default("Cash")
+  reference   String?  // cheque no, UPI ref, etc
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+  sale     Sale?     @relation(fields: [saleId], references: [id])
+}
+
+// ==================== RETURNS ====================
+
+model Return {
+  id            String   @id @default(cuid())
+  returnNo      String   @unique
+  type          String   // SALE_RETURN, PURCHASE_RETURN
+  referenceId   String   // sale or purchase ID
+  customerId    String?
+  supplierId    String?
+  totalAmount   Float    @default(0)
+  reason        String?
+  userId        String?
+  status        String   @default("Completed")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
+  items    ReturnItem[]
+}
+
+model ReturnItem {
+  id          String @id @default(cuid())
+  returnId    String
+  medicineId  String
+  batchId     String?
+  quantity    Int
+  unitType    String @default("strip")
+  rate        Float
+  total       Float
+  reason      String?
+
+  return   Return         @relation(fields: [returnId], references: [id])
+  medicine Medicine       @relation(fields: [medicineId], references: [id])
+  batch    MedicineBatch? @relation(fields: [batchId], references: [id])
+}
+
+// ==================== AUDIT LOGS ====================
+
+model AuditLog {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  userId    String?
+  action    String   // LOGIN, SALE, PURCHASE, RETURN, DELETE, ADJUSTMENT
+  module    String   // sales, purchases, medicines, settings, etc
+  details   String?  @db.Text
+  ipAddress String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id])
 }
