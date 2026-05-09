@@ -179,6 +179,7 @@ export function POSBillingPage() {
   const cashReceivedRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
   const paymentSectionRef = useRef<HTMLDivElement>(null);
+  const completeSaleRef = useRef<() => void>(() => {});
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -535,7 +536,7 @@ export function POSBillingPage() {
           break;
         case 'F8':
           e.preventDefault();
-          if (!isInput && cart.length > 0 && !isSubmitting) handleCompleteSale();
+          if (!isInput && cart.length > 0 && !isSubmitting) completeSaleRef.current();
           break;
         case 'Escape':
           e.preventDefault();
@@ -561,7 +562,7 @@ export function POSBillingPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, holdBill, handleEsc, scrollToPayment, handleCompleteSale, isSubmitting]);
+  }, [cart, holdBill, handleEsc, scrollToPayment, isSubmitting]);
 
   // ==================== ADD TO CART ====================
 
@@ -720,6 +721,7 @@ export function POSBillingPage() {
   // ==================== COMPLETE SALE ====================
 
   const handleCompleteSale = async () => {
+    completeSaleRef.current = handleCompleteSale;
     if (cart.length === 0) {
       toast({
         title: 'Cart is Empty',
