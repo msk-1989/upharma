@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, LogOut, Menu } from 'lucide-react';
+import { Bell, LogOut, Menu, Keyboard } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 const pageLabels: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -18,13 +26,89 @@ const pageLabels: Record<string, string> = {
   backup: 'Backup',
 };
 
+const shortcuts = [
+  { keys: 'CTRL + K', action: 'Search anything' },
+  { keys: 'CTRL + N', action: 'New bill' },
+  { keys: 'F1', action: 'Product search' },
+  { keys: 'F2', action: 'Customer search' },
+  { keys: 'F3', action: 'Hold bill' },
+  { keys: 'F8', action: 'Complete sale' },
+  { keys: 'ESC', action: 'Cancel / Go back' },
+];
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex items-center justify-center min-w-[60px] h-7 px-2 text-xs font-mono font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-md shadow-sm">
+      {children}
+    </kbd>
+  );
+}
+
+function ShortcutsDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors"
+          title="Keyboard shortcuts"
+        >
+          <Keyboard className="w-[18px] h-[18px] text-gray-500" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Keyboard className="w-5 h-5 text-emerald-600" />
+            Keyboard Shortcuts
+          </DialogTitle>
+          <DialogDescription>
+            Use these shortcuts for faster navigation and actions.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 mt-2">
+          {shortcuts.map((shortcut) => (
+            <div
+              key={shortcut.keys}
+              className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <span className="text-sm text-gray-700">{shortcut.action}</span>
+              <Kbd>{shortcut.keys}</Kbd>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-gray-400 text-center mt-1">
+          Press <Kbd>?</Kbd> anywhere to open this dialog
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Header({ user, onLogout }: { user: { name: string; role: string; username: string }; onLogout: () => void }) {
   const { currentPage, toggleSidebarOpen } = useAppStore();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Global keyboard shortcut: ? to open shortcuts dialog
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        // Don't trigger when typing in inputs
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const pageTitle = pageLabels[currentPage] || 'Dashboard';
@@ -68,6 +152,43 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
       {/* Right */}
       <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 lg:flex-none lg:w-[260px] justify-end flex-shrink-0">
         <div className="text-sm text-gray-500 hidden lg:block">{formatDateTime(currentTime)}</div>
+
+        {/* Keyboard Shortcuts Button */}
+        <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+          <DialogTrigger asChild>
+            <button
+              className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard className="w-[18px] h-[18px] text-gray-500" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Keyboard className="w-5 h-5 text-emerald-600" />
+                Keyboard Shortcuts
+              </DialogTitle>
+              <DialogDescription>
+                Use these shortcuts for faster navigation and actions.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1 mt-2">
+              {shortcuts.map((shortcut) => (
+                <div
+                  key={shortcut.keys}
+                  className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-sm text-gray-700">{shortcut.action}</span>
+                  <Kbd>{shortcut.keys}</Kbd>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 text-center mt-1">
+              Press <Kbd>?</Kbd> anywhere to toggle this dialog
+            </p>
+          </DialogContent>
+        </Dialog>
 
         <button className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors">
           <Bell className="w-[18px] h-[18px] text-gray-500" />

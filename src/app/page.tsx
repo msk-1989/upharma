@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore, type PageKey } from '@/stores/app-store';
 import { Sidebar } from '@/components/upharma/sidebar';
 import { Header } from '@/components/upharma/header';
@@ -20,6 +20,7 @@ import { ReportsPage } from '@/components/upharma/reports';
 import { DayClosePage } from '@/components/upharma/day-close';
 import { BackupPage } from '@/components/upharma/backup';
 import { LoginScreen } from '@/components/upharma/login';
+import { CommandPalette } from '@/components/upharma/command-palette';
 
 interface AuthUser {
   id: string;
@@ -67,6 +68,110 @@ function PageContent() {
   }
 }
 
+// ==================== KEYBOARD SHORTCUTS HOOK ====================
+
+function useKeyboardShortcuts(isAuthenticated: boolean) {
+  const {
+    commandPaletteOpen,
+    setCommandPaletteOpen,
+    toggleCommandPalette,
+    setCurrentPage,
+    setPosPreSearch,
+    setPosSelectCustomer,
+    setPosClearCart,
+  } = useAppStore();
+
+  const handleGlobalKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!isAuthenticated) return;
+
+      const target = e.target as HTMLElement;
+      const isInputField =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable;
+
+      // Command Palette: CTRL+K — always works (even in input)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        toggleCommandPalette();
+        return;
+      }
+
+      // ESC — always works (even in input)
+      if (e.key === 'Escape') {
+        if (commandPaletteOpen) {
+          e.preventDefault();
+          setCommandPaletteOpen(false);
+          return;
+        }
+        // Let ESC bubble naturally for other dialogs
+        return;
+      }
+
+      // For shortcuts below: skip if user is typing in an input
+      if (isInputField) return;
+
+      // "/" to open command palette (only when not in input)
+      if (e.key === '/' && !commandPaletteOpen) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+
+      // CTRL+N — New invoice
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        setPosClearCart(true);
+        setPosPreSearch(null);
+        setPosSelectCustomer(null);
+        setCurrentPage('pos-billing');
+        return;
+      }
+
+      // CTRL+P — Print (placeholder — handled at page level if needed)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        // Don't prevent default — let browser handle print
+        // Pages can intercept window.onbeforeprint if needed
+        return;
+      }
+
+      // F1 — Product search (go to POS with search focused)
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setPosPreSearch('__FOCUS__');
+        setCurrentPage('pos-billing');
+        return;
+      }
+
+      // F2 — Customer search (open palette with "cust " prefix)
+      if (e.key === 'F2') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+    },
+    [
+      isAuthenticated,
+      commandPaletteOpen,
+      setCommandPaletteOpen,
+      toggleCommandPalette,
+      setCurrentPage,
+      setPosPreSearch,
+      setPosSelectCustomer,
+      setPosClearCart,
+    ]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [handleGlobalKeyDown]);
+}
+
+// ==================== MAIN PAGE ====================
+
 export default function Home() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,6 +186,9 @@ export default function Home() {
   }, []);
 
   const { setUser: setStoreUser } = useAppStore();
+
+  // Register keyboard shortcuts (only when authenticated)
+  useKeyboardShortcuts(!!user);
 
   const handleLogin = (u: AuthUser) => {
     setUser(u);
@@ -115,6 +223,9 @@ export default function Home() {
           <PageContent />
         </main>
       </div>
+
+      {/* Global Command Palette */}
+      <CommandPalette />
     </div>
   );
 }

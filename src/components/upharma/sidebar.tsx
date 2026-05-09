@@ -47,6 +47,25 @@ const navItems: { key: PageKey; label: string; icon: React.ElementType }[] = [
   { key: 'backup', label: 'Backup', icon: Database },
 ];
 
+/** Role-based access control for sidebar navigation items */
+const roleAccess: Record<string, string[]> = {
+  'dashboard': ['Admin', 'Manager', 'Cashier'],
+  'pos-billing': ['Admin', 'Manager', 'Cashier'],
+  'medicines': ['Admin', 'Manager', 'Cashier'],
+  'inventory': ['Admin', 'Manager'],
+  'purchases': ['Admin', 'Manager'],
+  'purchase-orders': ['Admin', 'Manager'],
+  'customers': ['Admin', 'Manager', 'Cashier'],
+  'suppliers': ['Admin', 'Manager'],
+  'racks': ['Admin', 'Manager'],
+  'doctors': ['Admin', 'Manager', 'Cashier'],
+  'returns': ['Admin', 'Manager', 'Cashier'],
+  'reports': ['Admin', 'Manager'],
+  'day-close': ['Admin', 'Manager'],
+  'settings': ['Admin'],
+  'backup': ['Admin'],
+};
+
 function SidebarNavItem({ item, isActive, collapsed, onClick }: {
   item: { key: PageKey; label: string; icon: React.ElementType };
   isActive: boolean;
@@ -88,7 +107,14 @@ function SidebarNavItem({ item, isActive, collapsed, onClick }: {
 }
 
 export function Sidebar() {
-  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen } = useAppStore();
+  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen, user, setSidebarCollapsed } = useAppStore();
+
+  const role = user?.role || 'Cashier';
+
+  // Filter nav items based on role
+  const visibleNavItems = navItems.filter(item =>
+    roleAccess[item.key]?.includes(role)
+  );
 
   // Reactive mobile detection using useSyncExternalStore (no effect needed)
   const subscribe = React.useCallback((cb: () => void) => {
@@ -100,9 +126,16 @@ export function Sidebar() {
   const getServerSnapshot = React.useCallback(() => false, []);
   const isMobile = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
+  // Cashiers default to collapsed on desktop for max billing space
   // On mobile, sidebar drawer is always expanded (shows labels).
-  // On desktop, sidebar respects the collapsed state.
   const effectiveCollapsed = isMobile ? false : sidebarCollapsed;
+
+  // Auto-collapse for cashiers on initial load
+  React.useEffect(() => {
+    if (role === 'Cashier' && !isMobile && !sidebarCollapsed) {
+      setSidebarCollapsed(true);
+    }
+  }, [role, isMobile, sidebarCollapsed, setSidebarCollapsed]);
 
   const handleNavClick = (key: PageKey) => {
     setCurrentPage(key);
@@ -155,7 +188,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden">
           <ul className="space-y-0.5 px-2">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <SidebarNavItem
                 key={item.key}
                 item={item}

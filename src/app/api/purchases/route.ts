@@ -39,9 +39,10 @@ export async function POST(request: NextRequest) {
       subtotal += lineTotal;
       totalGst += cgst + sgst;
 
-      // Create or update batch
+      // Auto-generate batch number if not provided: {MedicineName}-{YYYYMM}
       const expiryDate = item.expiryDate ? new Date(item.expiryDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-      const batchNo = item.batchNo || `BATCH-${Date.now()}`;
+      const now = new Date();
+      const batchNo = item.batchNo || `${medicine.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 15)}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
 
       const batch = await db.medicineBatch.upsert({
         where: { id: item.batchId || '' },
@@ -59,6 +60,19 @@ export async function POST(request: NextRequest) {
           active: true,
         },
         update: { stockQty: { increment: qtySmallest } },
+      });
+
+      // Create StockMovement record for audit trail
+      await db.stockMovement.create({
+        data: {
+          medicineId: medicine.id,
+          batchId: batch.id,
+          type: 'IN',
+          quantity: qtySmallest,
+          reference: 'purchase',
+          notes: `Purchase GRN — Batch ${batchNo}`,
+          userId: userId || null,
+        },
       });
 
       purchaseItemsData.push({

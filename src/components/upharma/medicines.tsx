@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Pill, Plus, Pencil, Trash2, Search, Filter, Package, AlertTriangle, Shield, ShieldAlert, ShieldCheck, Ban, Info, FlaskConical, Syringe } from 'lucide-react';
+import { Pill, Plus, Pencil, Trash2, Search, Filter, Package, AlertTriangle, Shield, ShieldAlert, ShieldCheck, Ban, Info, FlaskConical, Syringe, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+
+// cn utility for conditional classes
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
+}
+
 import {
   Tooltip,
   TooltipContent,
@@ -100,6 +106,7 @@ export function MedicinesPage() {
   const [editing, setEditing] = useState<Medicine | null>(null);
   const [form, setForm] = useState(emptyMedicine);
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const fetchMedicines = useCallback(async () => {
     setLoading(true);
@@ -129,12 +136,14 @@ export function MedicinesPage() {
     setDialogOpen(false);
     setEditing(null);
     setForm(emptyMedicine);
+    setShowAdvanced(false);
     setSaving(false);
     fetchMedicines();
   };
 
   const handleEdit = (med: Medicine) => {
     setEditing(med);
+    setShowAdvanced(true);
     setForm({
       name: med.name, genericName: med.genericName || '', manufacturer: med.manufacturer || '',
       category: med.category || 'General', drugSchedule: med.drugSchedule || 'OTC', hsnCode: med.hsnCode || '',
@@ -174,7 +183,7 @@ export function MedicinesPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">Manage your medicine catalog ({medicines.length} items)</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2" onClick={() => { setEditing(null); setForm(emptyMedicine); setDialogOpen(true); }}>
+        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2" onClick={() => { setEditing(null); setForm(emptyMedicine); setShowAdvanced(false); setDialogOpen(true); }}>
           <Plus className="w-4 h-4" /> Add Medicine
         </Button>
       </div>
@@ -325,111 +334,136 @@ export function MedicinesPage() {
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Medicine' : 'Add New Medicine'}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-            <div className="space-y-1.5 col-span-2">
-              <Label className="text-sm font-medium">Medicine Name *</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border-border/80" placeholder="e.g. Dolo 650" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Generic Name</Label>
-              <Input value={form.genericName} onChange={(e) => setForm({ ...form, genericName: e.target.value })} className="border-border/80" placeholder="e.g. Paracetamol" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Manufacturer</Label>
-              <Input value={form.manufacturer} onChange={(e) => setForm({ ...form, manufacturer: e.target.value })} className="border-border/80" placeholder="e.g. Micro Labs" />
+          <div className="space-y-4">
+            {/* ── Basic Fields (always visible) ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+              <div className="space-y-1.5 col-span-2">
+                <Label className="text-sm font-medium">Medicine Name *</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border-border/80" placeholder="e.g. Dolo 650" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Generic Name / Salt</Label>
+                <Input value={form.genericName} onChange={(e) => setForm({ ...form, genericName: e.target.value })} className="border-border/80" placeholder="e.g. Paracetamol" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Manufacturer</Label>
+                <Input value={form.manufacturer} onChange={(e) => setForm({ ...form, manufacturer: e.target.value })} className="border-border/80" placeholder="e.g. Micro Labs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Category</Label>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                  <SelectTrigger className="border-border/80"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['Analgesic', 'Antibiotic', 'Antacid', 'Antihistamine', 'Antidiabetic', 'Cardiac', 'Supplement', 'Topical', 'Electrolyte', 'General', 'Cough & Cold', 'Vitamins', 'Anti-inflammatory', 'Antifungal', 'Antiviral', 'Antihypertensive', 'Respiratory', 'Dermatology', 'Eye/Ear Drops', 'Injectables'].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">MRP (per unit)</Label>
+                <Input type="number" step="0.01" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: parseFloat(e.target.value) || 0 })} className="border-border/80" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Sale Rate (per unit)</Label>
+                <Input type="number" step="0.01" value={form.saleRate} onChange={(e) => setForm({ ...form, saleRate: parseFloat(e.target.value) || 0 })} className="border-border/80" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Purchase Rate (per unit)</Label>
+                <Input type="number" step="0.01" value={form.purchaseRate} onChange={(e) => setForm({ ...form, purchaseRate: parseFloat(e.target.value) || 0 })} className="border-border/80" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Barcode</Label>
+                <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className="border-border/80" />
+              </div>
             </div>
 
-            {/* Drug Schedule Selector */}
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium flex items-center gap-1.5">
-                Drug Schedule *
-                <span className="text-[10px] text-gray-400">(Drugs & Cosmetics Act)</span>
-              </Label>
-              <Select value={form.drugSchedule} onValueChange={(v) => setForm({ ...form, drugSchedule: v })}>
-                <SelectTrigger className="border-border/80">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DRUG_SCHEDULES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{s.label}</span>
-                        <span className="text-gray-400 text-xs">- {s.description.substring(0, 40)}...</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.drugSchedule && (
-                <p className="text-[11px] text-gray-500">
-                  {getScheduleConfig(form.drugSchedule).description}
-                </p>
-              )}
-            </div>
+            {/* ── Advanced Toggle ── */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-emerald-600 transition-colors py-1"
+            >
+              <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', showAdvanced && 'rotate-180')} />
+              {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
+            </button>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Category</Label>
-              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                <SelectTrigger className="border-border/80"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['Analgesic', 'Antibiotic', 'Antacid', 'Antihistamine', 'Antidiabetic', 'Cardiac', 'Supplement', 'Topical', 'Electrolyte', 'General', 'Cough & Cold', 'Vitamins', 'Anti-inflammatory', 'Antifungal', 'Antiviral', 'Antihypertensive', 'Respiratory', 'Dermatology', 'Eye/Ear Drops', 'Injectables'].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">HSN Code</Label>
-              <Input value={form.hsnCode} onChange={(e) => setForm({ ...form, hsnCode: e.target.value })} className="border-border/80" placeholder="e.g. 30049099" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">GST %</Label>
-              <Select value={String(form.gstPercent)} onValueChange={(v) => setForm({ ...form, gstPercent: parseFloat(v) })}>
-                <SelectTrigger className="border-border/80"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">0%</SelectItem><SelectItem value="5">5%</SelectItem><SelectItem value="12">12%</SelectItem><SelectItem value="18">18%</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Barcode</Label>
-              <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className="border-border/80" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Base Unit</Label>
-              <Select value={form.baseUnit} onValueChange={(v) => setForm({ ...form, baseUnit: v })}>
-                <SelectTrigger className="border-border/80"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Tablet">Tablet</SelectItem><SelectItem value="Capsule">Capsule</SelectItem><SelectItem value="Bottle">Bottle</SelectItem><SelectItem value="Tube">Tube</SelectItem><SelectItem value="Sachet">Sachet</SelectItem><SelectItem value="Cream">Cream</SelectItem><SelectItem value="Vial">Vial</SelectItem><SelectItem value="Ampoule">Ampoule</SelectItem><SelectItem value="Pessary">Pessary</SelectItem><SelectItem value="Unit">Unit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Units Per Strip</Label>
-              <Input type="number" value={form.unitsPerStrip} onChange={(e) => setForm({ ...form, unitsPerStrip: parseInt(e.target.value) || 1 })} className="border-border/80" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Strips Per Box</Label>
-              <Input type="number" value={form.stripsPerBox} onChange={(e) => setForm({ ...form, stripsPerBox: parseInt(e.target.value) || 1 })} className="border-border/80" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Purchase Rate (per unit)</Label>
-              <Input type="number" step="0.01" value={form.purchaseRate} onChange={(e) => setForm({ ...form, purchaseRate: parseFloat(e.target.value) || 0 })} className="border-border/80" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Sale Rate (per unit)</Label>
-              <Input type="number" step="0.01" value={form.saleRate} onChange={(e) => setForm({ ...form, saleRate: parseFloat(e.target.value) || 0 })} className="border-border/80" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">MRP (per unit)</Label>
-              <Input type="number" step="0.01" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: parseFloat(e.target.value) || 0 })} className="border-border/80" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Reorder Level</Label>
-              <Input type="number" value={form.reorderLevel} onChange={(e) => setForm({ ...form, reorderLevel: parseInt(e.target.value) || 0 })} className="border-border/80" />
-            </div>
-            <div className="flex items-center gap-3 col-span-2 pt-2">
-              <Switch checked={form.allowLooseSale} onCheckedChange={(v) => setForm({ ...form, allowLooseSale: v })} className="data-[state=checked]:bg-emerald-500" />
-              <Label className="text-sm">Allow Loose Sale (individual tablets)</Label>
-            </div>
+            {/* ── Advanced Fields (hidden by default) ── */}
+            {showAdvanced && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">HSN Code</Label>
+                  <Input value={form.hsnCode} onChange={(e) => setForm({ ...form, hsnCode: e.target.value })} className="border-border/80" placeholder="e.g. 30049099" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">GST %</Label>
+                  <Select value={String(form.gstPercent)} onValueChange={(v) => setForm({ ...form, gstPercent: parseFloat(v) })}>
+                    <SelectTrigger className="border-border/80"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">0%</SelectItem><SelectItem value="5">5%</SelectItem><SelectItem value="12">12%</SelectItem><SelectItem value="18">18%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Drug Schedule Selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    Drug Schedule
+                    <span className="text-[10px] text-gray-400">(Drugs & Cosmetics Act)</span>
+                  </Label>
+                  <Select value={form.drugSchedule} onValueChange={(v) => setForm({ ...form, drugSchedule: v })}>
+                    <SelectTrigger className="border-border/80">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DRUG_SCHEDULES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{s.label}</span>
+                            <span className="text-gray-400 text-xs">- {s.description.substring(0, 40)}...</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.drugSchedule && (
+                    <p className="text-[11px] text-gray-500">
+                      {getScheduleConfig(form.drugSchedule).description}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Base Unit</Label>
+                  <Select value={form.baseUnit} onValueChange={(v) => setForm({ ...form, baseUnit: v })}>
+                    <SelectTrigger className="border-border/80"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Tablet">Tablet</SelectItem><SelectItem value="Capsule">Capsule</SelectItem><SelectItem value="Bottle">Bottle</SelectItem><SelectItem value="Tube">Tube</SelectItem><SelectItem value="Sachet">Sachet</SelectItem><SelectItem value="Cream">Cream</SelectItem><SelectItem value="Vial">Vial</SelectItem><SelectItem value="Ampoule">Ampoule</SelectItem><SelectItem value="Pessary">Pessary</SelectItem><SelectItem value="Unit">Unit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Units Per Strip</Label>
+                  <Input type="number" value={form.unitsPerStrip} onChange={(e) => setForm({ ...form, unitsPerStrip: parseInt(e.target.value) || 1 })} className="border-border/80" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Strips Per Box</Label>
+                  <Input type="number" value={form.stripsPerBox} onChange={(e) => setForm({ ...form, stripsPerBox: parseInt(e.target.value) || 1 })} className="border-border/80" />
+                </div>
+                <div className="flex items-center gap-3 sm:col-span-2">
+                  <Switch checked={form.allowLooseSale} onCheckedChange={(v) => setForm({ ...form, allowLooseSale: v })} className="data-[state=checked]:bg-emerald-500" />
+                  <Label className="text-sm">Allow Loose Sale (individual tablets)</Label>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Reorder Level</Label>
+                  <Input type="number" value={form.reorderLevel} onChange={(e) => setForm({ ...form, reorderLevel: parseInt(e.target.value) || 0 })} className="border-border/80" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Image URL</Label>
+                  <Input value={(form as Record<string, unknown>).imageUrl as string || ''} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="border-border/80" placeholder="https://..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Alternate Barcodes</Label>
+                  <Input value={(form as Record<string, unknown>).alternateBarcodes as string || ''} onChange={(e) => setForm({ ...form, alternateBarcodes: e.target.value })} className="border-border/80" placeholder="Comma-separated barcodes" />
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

@@ -53,6 +53,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import {
   Package,
   AlertTriangle,
@@ -77,6 +78,8 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  X,
+  Check,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -195,6 +198,8 @@ export function InventoryPage() {
   const [adjustType, setAdjustType] = useState<'add' | 'subtract'>('add');
   const [adjustQty, setAdjustQty] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
+  const [inlineAdjustBatchId, setInlineAdjustBatchId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // ─── Data Fetching ────────────────────────────────────────────────
 
@@ -372,7 +377,15 @@ export function InventoryPage() {
     setAdjustType('add');
     setAdjustQty('');
     setAdjustReason('');
-    setShowAdjustDialog(true);
+    setInlineAdjustBatchId(batch.id);
+    setShowAdjustDialog(false); // Don't open dialog anymore — use inline
+  };
+
+  const cancelInlineAdjust = () => {
+    setInlineAdjustBatchId(null);
+    setAdjustQty('');
+    setAdjustReason('');
+    setSelectedBatch(null);
   };
 
   const openDeleteDialog = (batch: Batch) => {
@@ -454,11 +467,21 @@ export function InventoryPage() {
         body: JSON.stringify({ stockQty: newQty }),
       });
       if (!res.ok) throw new Error('Failed to adjust stock');
-      setShowAdjustDialog(false);
+      setInlineAdjustBatchId(null);
+      setAdjustQty('');
+      setAdjustReason('');
       setSelectedBatch(null);
+      toast({
+        title: 'Stock Adjusted',
+        description: `${selectedBatch.medicine?.name} stock updated to ${newQty} units.`,
+      });
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Adjustment failed');
+      toast({
+        title: 'Adjustment Failed',
+        description: err instanceof Error ? err.message : 'Could not adjust stock.',
+        variant: 'destructive',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -789,8 +812,8 @@ export function InventoryPage() {
                         const days = daysUntilExpiry(batch.expiryDate);
                         const expiryBadge = getExpiryBadge(days);
                         return (
+                          <React.Fragment key={batch.id}>
                           <TableRow
-                            key={batch.id}
                             className={days <= 0 ? 'bg-red-50/50 dark:bg-red-950/20' : days <= 90 ? 'bg-orange-50/30 dark:bg-orange-950/10' : ''}
                           >
                             <TableCell className="sticky left-0 bg-inherit z-10">
@@ -861,6 +884,113 @@ export function InventoryPage() {
                               </div>
                             </TableCell>
                           </TableRow>
+
+                          {/* ── Inline Stock Adjustment Row ── */}
+                          {inlineAdjustBatchId === batch.id && (
+                            <TableRow key={`adjust-${batch.id}`} className="bg-emerald-50/70">
+                              <TableCell colSpan={11} className="p-3">
+                                <div className="flex items-start gap-2 mb-2">
+                                  <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <PlusCircle className="h-4 w-4 text-emerald-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-emerald-800">
+                                      Adjust Stock: {batch.medicine?.name}
+                                      <span className="text-xs font-normal text-gray-500 ml-1">(Batch: {batch.batchNo})</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                      Current stock: <span className="font-semibold text-gray-700">{batch.stockQty}</span> {batch.medicine?.baseUnit}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-3 items-end pl-10">
+                                  {/* Adjustment Type */}
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-gray-600">Type</Label>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={adjustType === 'add' ? 'default' : 'outline'}
+                                        className={adjustType === 'add' ? 'bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs px-3' : 'h-8 text-xs px-3'}
+                                        onClick={() => setAdjustType('add')}
+                                      >
+                                        <PlusCircle className="h-3.5 w-3.5 mr-1" /> Add
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={adjustType === 'subtract' ? 'default' : 'outline'}
+                                        className={adjustType === 'subtract' ? 'bg-red-600 hover:bg-red-700 text-white h-8 text-xs px-3' : 'h-8 text-xs px-3'}
+                                        onClick={() => setAdjustType('subtract')}
+                                      >
+                                        <MinusCircle className="h-3.5 w-3.5 mr-1" /> Remove
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  {/* Quantity */}
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-gray-600">Quantity</Label>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      placeholder="Qty"
+                                      className="h-8 text-sm w-24"
+                                      value={adjustQty}
+                                      onChange={(e) => setAdjustQty(e.target.value)}
+                                      autoFocus
+                                      onKeyDown={(e) => { if (e.key === 'Enter') handleStockAdjust(); }}
+                                    />
+                                  </div>
+                                  {/* New stock preview */}
+                                  {adjustQty && (
+                                    <div className="text-xs text-muted-foreground pb-5">
+                                      → <span className="font-semibold text-foreground">{adjustType === 'add'
+                                        ? batch.stockQty + (parseInt(adjustQty) || 0)
+                                        : Math.max(0, batch.stockQty - (parseInt(adjustQty) || 0))
+                                      }</span> {batch.medicine?.baseUnit}
+                                    </div>
+                                  )}
+                                  {/* Reason */}
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-gray-600">Reason</Label>
+                                    <Select value={adjustReason} onValueChange={(v) => setAdjustReason(v)}>
+                                      <SelectTrigger className="h-8 text-xs w-[140px]">
+                                        <SelectValue placeholder="Select..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="damaged">Damaged</SelectItem>
+                                        <SelectItem value="expired">Expired</SelectItem>
+                                        <SelectItem value="count_correction">Count Correction</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {/* Actions */}
+                                  <div className="flex gap-2 pb-5">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs px-3"
+                                      onClick={cancelInlineAdjust}
+                                    >
+                                      <X className="w-3 h-3 mr-1" /> Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      className={`h-8 text-xs px-3 text-white ${adjustType === 'add' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}
+                                      onClick={handleStockAdjust}
+                                      disabled={submitting || !adjustQty || (parseInt(adjustQty) || 0) <= 0}
+                                    >
+                                      {submitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                                      {adjustType === 'add' ? 'Apply' : 'Remove'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </TableCell>
+                          </TableRow>
+                          )}
+                          </React.Fragment>
                         );
                       })
                     )}
@@ -1343,113 +1473,6 @@ export function InventoryPage() {
             >
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {showEditDialog ? 'Update Batch' : 'Create Batch'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Stock Adjustment Dialog ───────────────────────────────── */}
-      <Dialog open={showAdjustDialog} onOpenChange={(open) => {
-        if (!open) {
-          setShowAdjustDialog(false);
-          setSelectedBatch(null);
-        }
-      }}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-emerald-600" />
-              Adjust Stock
-            </DialogTitle>
-            <DialogDescription>
-              {selectedBatch && (
-                <>
-                  Adjust stock for <span className="font-semibold text-foreground">{selectedBatch.medicine?.name}</span>
-                  {' '}(Batch: {selectedBatch.batchNo})
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            {selectedBatch && (
-              <div className="bg-muted/50 rounded-lg p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current Stock:</span>
-                  <span className="font-semibold">{selectedBatch.stockQty} {selectedBatch.medicine?.baseUnit}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="grid gap-2">
-              <Label>Adjustment Type</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={adjustType === 'add' ? 'default' : 'outline'}
-                  className={adjustType === 'add' ? 'bg-emerald-600 hover:bg-emerald-700 flex-1' : 'flex-1'}
-                  onClick={() => setAdjustType('add')}
-                >
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Add Stock
-                </Button>
-                <Button
-                  type="button"
-                  variant={adjustType === 'subtract' ? 'default' : 'outline'}
-                  className={adjustType === 'subtract' ? 'bg-red-600 hover:bg-red-700 flex-1' : 'flex-1'}
-                  onClick={() => setAdjustType('subtract')}
-                >
-                  <MinusCircle className="h-4 w-4 mr-2" />
-                  Remove Stock
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="adjustQty">Quantity *</Label>
-              <Input
-                id="adjustQty"
-                type="number"
-                min="1"
-                placeholder="Enter quantity"
-                value={adjustQty}
-                onChange={(e) => setAdjustQty(e.target.value)}
-              />
-              {selectedBatch && adjustQty && (
-                <p className="text-xs text-muted-foreground">
-                  New stock: {adjustType === 'add'
-                    ? selectedBatch.stockQty + (parseInt(adjustQty) || 0)
-                    : Math.max(0, selectedBatch.stockQty - (parseInt(adjustQty) || 0))
-                  } {selectedBatch.medicine?.baseUnit}
-                </p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="adjustReason">Reason (optional)</Label>
-              <Input
-                id="adjustReason"
-                placeholder="e.g., Damaged, Returned, Physical count"
-                value={adjustReason}
-                onChange={(e) => setAdjustReason(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowAdjustDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleStockAdjust}
-              disabled={submitting || !adjustQty || (parseInt(adjustQty) || 0) <= 0}
-              className={adjustType === 'add'
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                : 'bg-red-600 hover:bg-red-700 text-white'
-              }
-            >
-              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {adjustType === 'add' ? 'Add Stock' : 'Remove Stock'}
             </Button>
           </DialogFooter>
         </DialogContent>
