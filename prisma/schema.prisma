@@ -207,10 +207,11 @@ model Customer {
 // ==================== SALES ====================
 
 model Sale {
-  id          String   @id @default(cuid())
-  invoiceNo   String   @unique
-  customerId  String?
-  date        DateTime @default(now())
+  id           String   @id @default(cuid())
+  invoiceNo    String   @unique
+  customerId   String?
+  customerName String?  // name for walk-in customers (stored directly on sale)
+  date         DateTime @default(now())
   subtotal    Float    @default(0)
   totalDiscount Float   @default(0)
   cgst        Float    @default(0)

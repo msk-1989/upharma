@@ -98,6 +98,7 @@ interface RecentSale {
   paymentMode: string;
   status: string;
   createdAt: string;
+  customerName?: string | null;
   customer?: { name: string } | null;
   items?: { medicineName?: string }[];
 }
@@ -171,6 +172,7 @@ export function POSBillingPage() {
   // Customer & payment state
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('walk-in');
+  const [walkInCustomerName, setWalkInCustomerName] = useState<string>('');
   const [paymentMode, setPaymentMode] = useState<string>('Cash');
 
   // Sale state
@@ -404,8 +406,18 @@ export function POSBillingPage() {
         unitType: item.unitType,
       }));
 
+      // Determine customer name for bill
+      let customerName: string | undefined;
+      if (selectedCustomerId === 'walk-in') {
+        customerName = walkInCustomerName.trim() || undefined;
+      } else {
+        const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
+        customerName = selectedCustomer?.name;
+      }
+
       const body = {
         customerId: selectedCustomerId === 'walk-in' ? null : selectedCustomerId,
+        customerName,
         paymentMode,
         items: saleItems,
       };
@@ -432,6 +444,7 @@ export function POSBillingPage() {
       clearCart();
       setLastInvoiceNo('');
       setSelectedCustomerId('walk-in');
+      setWalkInCustomerName('');
       setPaymentMode('Cash');
       loadRecentSales();
     } catch (err) {
@@ -816,7 +829,7 @@ export function POSBillingPage() {
                           </td>
                           <td className="px-3 py-2.5">
                             <span className="text-sm text-gray-700">
-                              {sale.customer?.name || 'Walk-in'}
+                              {sale.customerName || sale.customer?.name || 'Walk-in'}
                             </span>
                           </td>
                           <td className="px-3 py-2.5">
@@ -862,8 +875,11 @@ export function POSBillingPage() {
                 </CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+            <CardContent className="space-y-3">
+              <Select value={selectedCustomerId} onValueChange={(val) => {
+                setSelectedCustomerId(val);
+                if (val !== 'walk-in') setWalkInCustomerName('');
+              }}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select customer" />
                 </SelectTrigger>
@@ -888,9 +904,48 @@ export function POSBillingPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-gray-400 mt-2">
+
+              {/* Walk-in Customer Name Input */}
+              {selectedCustomerId === 'walk-in' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-gray-600">
+                    Customer Name <span className="text-gray-400 font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    placeholder="Enter walk-in customer name..."
+                    className="h-9 text-sm"
+                    value={walkInCustomerName}
+                    onChange={(e) => setWalkInCustomerName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Selected Customer Info */}
+              {selectedCustomerId !== 'walk-in' && (() => {
+                const sel = customers.find((c) => c.id === selectedCustomerId);
+                if (!sel) return null;
+                return (
+                  <div className="bg-emerald-50 rounded-lg p-2.5 flex items-center gap-2">
+                    <User className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{sel.name}</p>
+                      {sel.phone && (
+                        <p className="text-xs text-gray-500">{sel.phone}</p>
+                      )}
+                    </div>
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0 flex-shrink-0">
+                      Linked
+                    </Badge>
+                  </div>
+                );
+              })()}
+
+              <p className="text-[11px] text-gray-400">
                 {selectedCustomerId === 'walk-in'
-                  ? 'No customer linked to this sale'
+                  ? walkInCustomerName.trim()
+                    ? `Bill will be in the name of: ${walkInCustomerName.trim()}`
+                    : 'Enter name above to print customer name on bill'
                   : 'Selected customer will be linked to this invoice'}
               </p>
             </CardContent>

@@ -23,7 +23,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, paymentMode, items, userId } = body;
+    const { customerId, customerName, paymentMode, items, userId } = body;
 
     let subtotal = 0;
     let totalGst = 0;
@@ -81,18 +81,31 @@ export async function POST(request: NextRequest) {
 
     grandTotal = subtotal + totalGst;
 
-    // Get next invoice number
-    const lastSale = await db.sale.findFirst({ orderBy: { createdAt: 'desc' }, select: { invoiceNo: true } });
-    let nextNum = 1051;
-    if (lastSale?.invoiceNo) {
-      const num = parseInt(lastSale.invoiceNo.replace(/\D/g, ''));
-      if (!isNaN(num)) nextNum = num + 1;
+    // Get next invoice number using max query with retry
+    let invoiceNo = '';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const allInvoices = await db.sale.findMany({
+        select: { invoiceNo: true },
+        orderBy: { invoiceNo: 'desc' },
+        take: 1,
+      });
+      let nextNum = 1001;
+      if (allInvoices.length > 0 && allInvoices[0].invoiceNo) {
+        const num = parseInt(allInvoices[0].invoiceNo.replace(/\D/g, ''));
+        if (!isNaN(num)) nextNum = num + 1;
+      }
+      invoiceNo = `INV-${String(nextNum).padStart(5, '0')}`;
+
+      // Check if it already exists
+      const exists = await db.sale.findFirst({ where: { invoiceNo } });
+      if (!exists) break;
     }
 
     const sale = await db.sale.create({
       data: {
-        invoiceNo: `INV-${String(nextNum).padStart(5, '0')}`,
+        invoiceNo,
         customerId: customerId || null,
+        customerName: customerName || null,
         subtotal: Math.round(subtotal * 100) / 100,
         cgst: 0,
         sgst: 0,
