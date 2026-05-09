@@ -114,8 +114,9 @@ interface PurchaseReportData {
 
 type ReportType = 'sales' | 'purchases' | 'gst' | 'stock' | 'expiry' | 'profit';
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatCurrency(amount: number | undefined | null) {
+  const val = amount ?? 0;
+  return `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatDate(dateStr: string) {
