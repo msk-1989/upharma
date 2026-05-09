@@ -113,11 +113,15 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
 
   const pageTitle = pageLabels[currentPage] || 'Dashboard';
 
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleDateString('en-IN', {
-      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-    }) + ' ' + date.toLocaleTimeString('en-IN', {
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-IN', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-IN', {
+      weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
     });
   };
 
@@ -151,7 +155,10 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
 
       {/* Right */}
       <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 lg:flex-none lg:w-[260px] justify-end flex-shrink-0">
-        <div className="text-sm text-gray-500 hidden lg:block">{formatDateTime(currentTime)}</div>
+        <div className="text-right hidden lg:block leading-tight">
+          <p className="text-sm font-medium text-gray-700 tabular-nums">{formatTime(currentTime)}</p>
+          <p className="text-[11px] text-gray-400">{formatDate(currentTime)}</p>
+        </div>
 
         {/* Keyboard Shortcuts Button */}
         <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>

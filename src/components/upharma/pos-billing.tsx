@@ -1583,119 +1583,6 @@ export function POSBillingPage() {
             </CardContent>
           </Card>
 
-          {/* Payment Mode */}
-          <Card className="border-border/60 shadow-sm" ref={paymentSectionRef}>
-            <CardHeader className="pb-3 pt-4">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-emerald-600" />
-                <CardTitle className="text-base font-semibold text-gray-900">
-                  Payment Mode
-                  <kbd className="hidden lg:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-400 rounded border border-gray-200 align-middle">F4</kbd>
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <RadioGroup value={paymentMode} onValueChange={(val) => {
-                setPaymentMode(val);
-                if (val === 'Cash') {
-                  setTimeout(() => cashReceivedRef.current?.focus(), 100);
-                }
-                setCashReceived('');
-              }} className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'Cash', icon: Banknote, label: 'Cash', color: 'text-green-600' },
-                  { value: 'Card', icon: CreditCard, label: 'Card', color: 'text-blue-600' },
-                  { value: 'UPI', icon: Smartphone, label: 'UPI', color: 'text-purple-600' },
-                  { value: 'Credit', icon: Building2, label: 'Credit', color: 'text-orange-600' },
-                ].map((pm) => (
-                  <Label
-                    key={pm.value}
-                    htmlFor={`pay-${pm.value}`}
-                    className={`flex items-center gap-2.5 px-3 py-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      paymentMode === pm.value
-                        ? 'border-emerald-500 bg-emerald-50 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <RadioGroupItem value={pm.value} id={`pay-${pm.value}`} />
-                    <pm.icon className={`w-4 h-4 ${paymentMode === pm.value ? 'text-emerald-600' : pm.color}`} />
-                    <span
-                      className={`text-sm font-medium ${
-                        paymentMode === pm.value ? 'text-emerald-700' : 'text-gray-700'
-                      }`}
-                    >
-                      {pm.label}
-                    </span>
-                  </Label>
-                ))}
-              </RadioGroup>
-
-              {/* Cash Received Input */}
-              {paymentMode === 'Cash' && cart.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-gray-100">
-                  <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                    <IndianRupee className="w-3.5 h-3.5" />
-                    Cash Received
-                  </Label>
-                  <div className="relative">
-                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      ref={cashReceivedRef}
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className="pl-9 h-10 text-lg font-semibold"
-                      value={cashReceived}
-                      onChange={(e) => setCashReceived(e.target.value)}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  {cashReceivedNum > 0 && (
-                    <div className={`rounded-lg p-2.5 flex items-center justify-between ${
-                      isCashSufficient
-                        ? 'bg-emerald-50 border border-emerald-200'
-                        : 'bg-red-50 border border-red-200'
-                    }`}>
-                      <span className="text-xs font-medium text-gray-600">Change</span>
-                      <div className="flex items-center gap-1.5">
-                        {isCashSufficient ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                            <span className="text-sm font-bold text-emerald-600">{formatINR(cashChange)}</span>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="w-4 h-4 text-red-500" />
-                            <span className="text-sm font-bold text-red-600">Short: {formatINR(Math.abs(cashChange))}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {/* Quick cash buttons */}
-                  <div className="flex gap-1.5 flex-wrap">
-                    {[50, 100, 200, 500, 1000, 2000].map((amt) => (
-                      <button
-                        key={amt}
-                        className="px-2 py-1 text-[11px] font-medium bg-gray-100 text-gray-600 rounded hover:bg-emerald-100 hover:text-emerald-700 transition-colors border border-gray-200 hover:border-emerald-200"
-                        onClick={() => setCashReceived(String(amt))}
-                      >
-                        ₹{amt}
-                      </button>
-                    ))}
-                    <button
-                      className="px-2 py-1 text-[11px] font-medium bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors border border-emerald-200"
-                      onClick={() => setCashReceived(String(grandTotal))}
-                    >
-                      Exact
-                    </button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Loyalty Points Toggle */}
           {selectedCustomer && selectedCustomer.loyaltyPoints > 0 && cart.length > 0 && (
             <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
@@ -1823,6 +1710,119 @@ export function POSBillingPage() {
                       You will earn {Math.floor(grandTotal / 100)} loyalty points from this sale
                     </div>
                   )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Payment Mode — Footer Position */}
+          <Card className="border-border/60 shadow-sm" ref={paymentSectionRef}>
+            <CardHeader className="pb-3 pt-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+                <CardTitle className="text-base font-semibold text-gray-900">
+                  Payment Mode
+                  <kbd className="hidden lg:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-400 rounded border border-gray-200 align-middle">F4</kbd>
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <RadioGroup value={paymentMode} onValueChange={(val) => {
+                setPaymentMode(val);
+                if (val === 'Cash') {
+                  setTimeout(() => cashReceivedRef.current?.focus(), 100);
+                }
+                setCashReceived('');
+              }} className="grid grid-cols-2 gap-3">
+                {[
+                  { value: 'Cash', icon: Banknote, label: 'Cash', color: 'text-green-600' },
+                  { value: 'Card', icon: CreditCard, label: 'Card', color: 'text-blue-600' },
+                  { value: 'UPI', icon: Smartphone, label: 'UPI', color: 'text-purple-600' },
+                  { value: 'Credit', icon: Building2, label: 'Credit', color: 'text-orange-600' },
+                ].map((pm) => (
+                  <Label
+                    key={pm.value}
+                    htmlFor={`pay-${pm.value}`}
+                    className={`flex items-center gap-2.5 px-3 py-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      paymentMode === pm.value
+                        ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <RadioGroupItem value={pm.value} id={`pay-${pm.value}`} />
+                    <pm.icon className={`w-4 h-4 ${paymentMode === pm.value ? 'text-emerald-600' : pm.color}`} />
+                    <span
+                      className={`text-sm font-medium ${
+                        paymentMode === pm.value ? 'text-emerald-700' : 'text-gray-700'
+                      }`}
+                    >
+                      {pm.label}
+                    </span>
+                  </Label>
+                ))}
+              </RadioGroup>
+
+              {/* Cash Received Input */}
+              {paymentMode === 'Cash' && cart.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-gray-100">
+                  <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <IndianRupee className="w-3.5 h-3.5" />
+                    Cash Received
+                  </Label>
+                  <div className="relative">
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      ref={cashReceivedRef}
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className="pl-9 h-10 text-lg font-semibold"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  {cashReceivedNum > 0 && (
+                    <div className={`rounded-lg p-2.5 flex items-center justify-between ${
+                      isCashSufficient
+                        ? 'bg-emerald-50 border border-emerald-200'
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      <span className="text-xs font-medium text-gray-600">Change</span>
+                      <div className="flex items-center gap-1.5">
+                        {isCashSufficient ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            <span className="text-sm font-bold text-emerald-600">{formatINR(cashChange)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="w-4 h-4 text-red-500" />
+                            <span className="text-sm font-bold text-red-600">Short: {formatINR(Math.abs(cashChange))}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Quick cash buttons */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[50, 100, 200, 500, 1000, 2000].map((amt) => (
+                      <button
+                        key={amt}
+                        className="px-2 py-1 text-[11px] font-medium bg-gray-100 text-gray-600 rounded hover:bg-emerald-100 hover:text-emerald-700 transition-colors border border-gray-200 hover:border-emerald-200"
+                        onClick={() => setCashReceived(String(amt))}
+                      >
+                        ₹{amt}
+                      </button>
+                    ))}
+                    <button
+                      className="px-2 py-1 text-[11px] font-medium bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors border border-emerald-200"
+                      onClick={() => setCashReceived(String(grandTotal))}
+                    >
+                      Exact
+                    </button>
+                  </div>
                 </div>
               )}
             </CardContent>
