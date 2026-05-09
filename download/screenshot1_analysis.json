@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "I'll analyze this screenshot of the Upharma Desktop ERP application in detail to help you recreate it accurately.\n\n## Overall Layout Structure\nThe application has a classic desktop ERP interface with a sidebar navigation on the left and main content area on the right. The design follows a clean, professional medical/pharmacy management system aesthetic with a teal/green color scheme.\n\n## Header Section\n- **Top bar**: Dark gray background with browser tabs and system icons\n- **Application header**: White background with:\n  - Left: Green circular logo with \"Upharma\" text\n  - Center: Breadcrumb navigation showing \"Upharma Medical Store\" and \"Settings\"\n  - Right: Date/time (Sat, 09 May, 2026 06:49:26 pm) and user info (\"Administrator Admin\")\n\n## Left Sidebar Navigation\n- **Background**: White with light gray borders\n- **Items** (with icons):\n  - Dashboard (grid icon)\n  - POS Billing (shopping cart icon)\n  - Medicines (pill icon)\n  - Inventory (boxes icon)\n  - Purchases (truck icon)\n  - Customers (people icon)\n  - Suppliers (document icon)\n  - Returns (refresh icon)\n  - Reports (chart icon)\n  - Settings (gear icon) - currently selected\n  - Backup (database icon)\n- **Bottom**: \"Collapse\" button and version info \"Upharma v1.0.0\"\n\n## Main Content Area\n### Page Header\n- **Title**: \"Settings\" with gear icon\n- **Subtitle**: \"Configure your pharmacy ERP settings\"\n- **Tabs**: Store, GST, Print, Users (selected), Invoice\n\n### User Management Section\n- **Header**: \"User Management\" with people icon and subtitle \"Manage users, roles, and access permissions\"\n- **Button**: Green \"Add User\" button with plus icon on the right\n\n### User Table\n- **Columns**: Name, Username, Role, Status, Last Login, Actions\n- **Rows**:\n  1. Dr. Rajesh Mehta | rajesh | Admin (green badge) | Active (green toggle) | 2025-01-22 09:30 | Edit icon\n  2. Sneha Patil | sneha | Pharmacist (white badge) | Active (green toggle) | 2025-01-22 08:15 | Edit icon\n  3. Amit Joshi | amit | Cashier (white badge) | Active (green toggle) | 2025-01-21 17:45 | Edit icon\n  4. Kavita Sharma | kavita | Manager (white badge) | Active (green toggle) | 2025-01-22 10:00 | Edit icon\n  5. Vikram Singh | vikram | Cashier (white badge) | Inactive (gray toggle) | 2025-01-10 14:20 | Edit icon\n\n## Color Scheme\n- **Primary**: Teal/green (#10B981 or similar)\n- **Background**: White (#FFFFFF)\n- **Sidebar**: White with light gray borders\n- **Text**: Dark gray/black for main text, lighter gray for secondary text\n- **Status indicators**: Green for active, gray for inactive\n- **Badges**: Green for admin role, white with gray text for other roles\n\n## Design Elements\n- Clean, modern interface with ample white space\n- Consistent icon usage throughout\n- Toggle switches for status\n- Table layout with clear headers\n- Professional medical/pharmacy color palette\n- Responsive design elements\n\n## Additional UI Details\n- System tray at bottom showing time (18:49), date (09-05-2026), battery (16%), and weather (35°C, Mostly sunny)\n- Browser showing multiple tabs open\n- Standard Windows taskbar at bottom\n\nThis detailed analysis should help you recreate the interface with all its specific elements, colors, and layout precisely.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1778344040,
+  "id": "2026051000265772242123a3654215",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "2026051000265772242123a3654215",
+  "usage": {
+    "completion_tokens": 820,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2778,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 3598
+  }
+}
