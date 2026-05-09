@@ -226,21 +226,6 @@ export function POSBillingPage() {
     loadRecentSales();
   }, [loadRecentSales]);
 
-  // ==================== CREDIT LIMIT CHECK ====================
-
-  useEffect(() => {
-    setCreditWarning(null);
-    if (selectedCustomer && selectedCustomer.creditLimit > 0 && cart.length > 0) {
-      const projectedBalance = selectedCustomer.balance + grandTotal;
-      if (projectedBalance > selectedCustomer.creditLimit) {
-        const excess = Math.round((projectedBalance - selectedCustomer.creditLimit) * 100) / 100;
-        setCreditWarning(
-          `This sale will exceed customer's credit limit by ${formatINR(excess)}`
-        );
-      }
-    }
-  }, [selectedCustomer, cart.length, grandTotal]);
-
   // ==================== DEBOUNCED SEARCH ====================
 
   const handleSearchChange = (value: string) => {
@@ -419,6 +404,21 @@ export function POSBillingPage() {
   const pointsToUse = useLoyaltyPoints ? Math.min(availablePoints, maxPointsDiscount) : 0;
   const loyaltyDiscount = pointsToUse; // ₹1 per point
   const grandTotal = Math.round((preDiscountTotal - loyaltyDiscount) * 100) / 100;
+
+  // ==================== CREDIT LIMIT CHECK ====================
+
+  useEffect(() => {
+    setCreditWarning(null);
+    if (selectedCustomer && selectedCustomer.creditLimit > 0 && cart.length > 0) {
+      const projectedBalance = selectedCustomer.balance + grandTotal;
+      if (projectedBalance > selectedCustomer.creditLimit) {
+        const excess = Math.round((projectedBalance - selectedCustomer.creditLimit) * 100) / 100;
+        setCreditWarning(
+          `This sale will exceed customer's credit limit by ${formatINR(excess)}`
+        );
+      }
+    }
+  }, [selectedCustomer, cart.length, grandTotal]);
 
   // ==================== COMPLETE SALE ====================
 
