@@ -43,7 +43,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { InvoicePrintDialog, InvoicePrintArea } from './invoice-print';
+import { InvoicePrintDialog, InvoicePrintArea, loadStoreSettings } from './invoice-print';
 
 // ==================== TYPES ====================
 
@@ -331,6 +331,7 @@ export function POSBillingPage() {
   // ==================== AUTO-FOCUS SEARCH ON MOUNT ====================
 
   useEffect(() => {
+    loadStoreSettings(); // Preload store settings for invoice printing
     const timer = setTimeout(() => searchInputRef.current?.focus(), 100);
     return () => clearTimeout(timer);
   }, []);
@@ -729,8 +730,10 @@ export function POSBillingPage() {
 
   // ==================== PRINT INVOICE ====================
 
-  const handlePrintInvoice = useCallback(() => {
+  const handlePrintInvoice = useCallback(async () => {
     setShowPrintDialog(false);
+    // Load latest store settings into invoice-print cache before printing
+    await loadStoreSettings();
     setTimeout(() => {
       window.print();
       // Reset print data after a delay

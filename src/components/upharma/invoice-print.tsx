@@ -34,19 +34,44 @@ interface InvoiceData {
 }
 
 // ==================== PHARMACY STORE CONFIG ====================
-// These would come from settings in production; using defaults for now.
+// Defaults used when settings API hasn't loaded yet
 
-const STORE = {
+const STORE_DEFAULTS = {
   name: 'Upharma Medical Store',
-  nameHindi: '',
   address: 'Main Market, City Center',
-  city: '',
-  pin: '',
   phone: '9876543210',
   gstNo: '27XXXXX1234X1ZX',
   drugLicenseNo: 'DL-2024000001',
   fssaiNo: '12345678901234',
 };
+
+// Cached settings loaded from API
+let _cachedStore: typeof STORE_DEFAULTS | null = null;
+
+export async function loadStoreSettings(): Promise<typeof STORE_DEFAULTS> {
+  if (_cachedStore) return _cachedStore;
+  try {
+    const res = await fetch('/api/settings');
+    const data = await res.json();
+    if (data.success) {
+      _cachedStore = {
+        name: data.data.storeName || STORE_DEFAULTS.name,
+        address: data.data.address || STORE_DEFAULTS.address,
+        phone: data.data.phone || STORE_DEFAULTS.phone,
+        gstNo: data.data.gstNumber || STORE_DEFAULTS.gstNo,
+        drugLicenseNo: data.data.drugLicense || STORE_DEFAULTS.drugLicenseNo,
+        fssaiNo: data.data.fssaiNo || STORE_DEFAULTS.fssaiNo,
+      };
+      return _cachedStore;
+    }
+  } catch { /* ignore */ }
+  return STORE_DEFAULTS;
+}
+
+// Helper to get store settings (sync, returns cached or defaults)
+function getStore(): typeof STORE_DEFAULTS {
+  return _cachedStore || STORE_DEFAULTS;
+}
 
 // ==================== HELPERS ====================
 
@@ -77,6 +102,7 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
   };
 
   const itemTotal = (item: InvoiceItem) => item.total;
+  const store = getStore();
 
   return (
     <div className="invoice-page" style={{ pageBreakInside: 'avoid' }}>
@@ -103,26 +129,26 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
           margin: '0',
           lineHeight: '1.2',
         }}>
-          {STORE.name}
+          {store.name}
         </h1>
         <p style={{
           fontSize: '9px',
           color: '#555',
           margin: '1px 0 0 0',
         }}>
-          {STORE.address}
-          {STORE.phone && <span> | Ph: {STORE.phone}</span>}
+          {store.address}
+          {store.phone && <span> | Ph: {store.phone}</span>}
         </p>
         <p style={{
           fontSize: '8px',
           color: '#777',
           margin: '1px 0 0 0',
         }}>
-          {STORE.gstNo && <span>GSTIN: {STORE.gstNo}</span>}
-          {STORE.gstNo && STORE.drugLicenseNo && <span> | </span>}
-          {STORE.drugLicenseNo && <span>DL No: {STORE.drugLicenseNo}</span>}
-          {STORE.drugLicenseNo && STORE.fssaiNo && <span> | </span>}
-          {STORE.fssaiNo && <span>FSSAI: {STORE.fssaiNo}</span>}
+          {store.gstNo && <span>GSTIN: {store.gstNo}</span>}
+          {store.gstNo && store.drugLicenseNo && <span> | </span>}
+          {store.drugLicenseNo && <span>DL No: {store.drugLicenseNo}</span>}
+          {store.drugLicenseNo && store.fssaiNo && <span> | </span>}
+          {store.fssaiNo && <span>FSSAI: {store.fssaiNo}</span>}
         </p>
       </div>
 
@@ -406,9 +432,9 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
           color: '#999',
           margin: '0',
         }}>
-          {STORE.drugLicenseNo && <span>DL No: {STORE.drugLicenseNo}</span>}
-          {STORE.drugLicenseNo && STORE.fssaiNo && <span> | </span>}
-          {STORE.fssaiNo && <span>FSSAI: {STORE.fssaiNo}</span>}
+          {store.drugLicenseNo && <span>DL No: {store.drugLicenseNo}</span>}
+          {store.drugLicenseNo && store.fssaiNo && <span> | </span>}
+          {store.fssaiNo && <span>FSSAI: {store.fssaiNo}</span>}
         </p>
       </div>
     </div>
