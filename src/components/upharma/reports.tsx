@@ -1362,7 +1362,10 @@ function ExpiryReport({
 
 /* ======================= PROFIT REPORT ======================= */
 function ProfitReport({ data }: { data: ProfitReport }) {
-  const { revenue, costOfGoods, profit, stockSummary } = data;
+  const revenue = data?.revenue || { total: 0, subtotal: 0, gst: 0, discount: 0 };
+  const costOfGoods = data?.costOfGoods || { total: 0 };
+  const profit = data?.profit || { grossProfit: 0, grossMargin: 0 };
+  const stockSummary = data?.stockSummary;
 
   return (
     <div className="space-y-6">
