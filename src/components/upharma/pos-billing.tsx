@@ -1056,7 +1056,7 @@ export function POSBillingPage() {
 
           {/* Cart Table */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 pt-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-emerald-600" />
@@ -1238,7 +1238,7 @@ export function POSBillingPage() {
 
           {/* Recent Invoices */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 pt-4">
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-emerald-600" />
                 <CardTitle className="text-base font-semibold text-gray-900">
@@ -1248,7 +1248,7 @@ export function POSBillingPage() {
             </CardHeader>
             <CardContent>
               {recentSales.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-6">
                   <Receipt className="w-8 h-8 mx-auto text-gray-300 mb-2" />
                   <p className="text-sm text-gray-500">No recent invoices</p>
                 </div>
@@ -1328,7 +1328,7 @@ export function POSBillingPage() {
         <div className="lg:col-span-2 space-y-4">
           {/* Customer Selection */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 pt-4">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-emerald-600" />
                 <CardTitle className="text-base font-semibold text-gray-900">
@@ -1525,7 +1525,7 @@ export function POSBillingPage() {
 
           {/* Payment Mode */}
           <Card className="border-border/60 shadow-sm" ref={paymentSectionRef}>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 pt-4">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-emerald-600" />
                 <CardTitle className="text-base font-semibold text-gray-900">
@@ -1684,7 +1684,7 @@ export function POSBillingPage() {
 
           {/* Bill Summary */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 pt-4">
               <div className="flex items-center gap-2">
                 <IndianRupee className="w-5 h-5 text-emerald-600" />
                 <CardTitle className="text-base font-semibold text-gray-900">
@@ -1769,26 +1769,27 @@ export function POSBillingPage() {
           </Card>
 
           {/* Complete Sale Button */}
-          <div className="flex items-center gap-2">
-            <Button
-              className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={cart.length === 0 || isSubmitting}
-              onClick={handleCompleteSale}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-5 h-5" />
-                  Complete Sale — {cart.length > 0 ? formatINR(grandTotal) : '₹0.00'}
-                </>
-              )}
-            </Button>
-            <kbd className="hidden lg:flex items-center justify-center px-2 py-1 text-[10px] font-mono bg-gray-100 text-gray-400 rounded border border-gray-200 h-12 w-10">F8</kbd>
-          </div>
+          <Button
+            className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            disabled={cart.length === 0 || isSubmitting}
+            onClick={handleCompleteSale}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                Complete Sale
+                {cart.length > 0 && (
+                  <span className="ml-1">— {formatINR(grandTotal)}</span>
+                )}
+                <kbd className="hidden lg:inline-flex ml-2 px-2 py-0.5 text-[10px] font-mono bg-white/20 border border-white/30 rounded text-white/80 items-center">F8</kbd>
+              </>
+            )}
+          </Button>
 
           {/* Quick Info */}
           <div className="grid grid-cols-2 gap-3">
@@ -1808,49 +1809,50 @@ export function POSBillingPage() {
 
           {/* Keyboard Shortcuts Reference */}
           <div className="bg-gray-50 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2.5">
               <Clock className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                 Keyboard Shortcuts
               </span>
             </div>
-            <ul className="space-y-1 text-xs text-gray-500">
-              <li className="flex items-center justify-between gap-2">
-                <span>Search medicine</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">F1</kbd>
-              </li>
-              <li className="flex items-center justify-between gap-2">
-                <span>Select customer</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">F2</kbd>
-              </li>
-              <li className="flex items-center justify-between gap-2">
-                <span>Hold bill</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">F3</kbd>
-              </li>
-              <li className="flex items-center justify-between gap-2">
-                <span>Jump to payment</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">F4</kbd>
-              </li>
-              <li className="flex items-center justify-between gap-2">
-                <span>Complete sale</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">F8</kbd>
-              </li>
-              <li className="flex items-center justify-between gap-2">
-                <span>Qty +/- (last item)</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Search medicine</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[28px] text-center">F1</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Select customer</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[28px] text-center">F2</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Hold bill</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[28px] text-center">F3</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Jump to payment</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[28px] text-center">F4</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Complete sale</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[28px] text-center">F8</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Qty +/- (last item)</span>
                 <div className="flex gap-0.5">
-                  <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">+</kbd>
-                  <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">-</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[24px] text-center">+</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[24px] text-center">-</kbd>
                 </div>
-              </li>
-              <li className="flex items-center justify-between gap-2">
-                <span>Clear / remove item</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono">Esc</kbd>
-              </li>
-              <li className="flex items-center gap-2">
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Clear / remove item</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-500 min-w-[28px] text-center">Esc</kbd>
+              </div>
+              <Separator className="my-1.5" />
+              <div className="flex items-center gap-2 py-0.5">
                 <AlertCircle className="w-3 h-3 text-orange-500 flex-shrink-0" />
-                <span>Orange expiry = near-expiry (within 3 months)</span>
-              </li>
-            </ul>
+                <span className="text-[11px] text-gray-400">Orange expiry = near-expiry (within 3 months)</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
