@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, LogOut } from 'lucide-react';
+import { Bell, LogOut, Menu } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 
 const pageLabels: Record<string, string> = {
@@ -19,7 +19,7 @@ const pageLabels: Record<string, string> = {
 };
 
 export function Header({ user, onLogout }: { user: { name: string; role: string; username: string }; onLogout: () => void }) {
-  const { currentPage } = useAppStore();
+  const { currentPage, toggleSidebarOpen } = useAppStore();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -38,17 +38,26 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
   };
 
   return (
-    <header className="h-16 bg-white border-b border-border flex items-center px-6 flex-shrink-0">
-      {/* Left: Logo */}
-      <div className="flex items-center gap-3 w-[260px] flex-shrink-0">
-        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">U</span>
+    <header className="h-16 bg-white border-b border-border flex items-center px-4 sm:px-6 flex-shrink-0">
+      {/* Left: Hamburger (mobile) + Logo */}
+      <div className="flex items-center gap-3 flex-1 min-w-0 lg:flex-none lg:w-[240px]">
+        <button
+          onClick={toggleSidebarOpen}
+          className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors lg:hidden shrink-0"
+          aria-label="Toggle sidebar"
+        >
+          <Menu className="w-5 h-5 text-gray-600" />
+        </button>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+            <span className="text-white font-bold text-sm">U</span>
+          </div>
+          <span className="font-semibold text-base text-gray-900 truncate hidden sm:inline">Upharma</span>
         </div>
-        <span className="font-semibold text-base text-gray-900">Upharma</span>
       </div>
 
       {/* Center: Breadcrumb */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="hidden md:flex flex-1 items-center justify-center">
         <nav className="flex items-center gap-2 text-sm">
           <span className="text-gray-500">Upharma Medical Store</span>
           <span className="text-gray-400">/</span>
@@ -57,7 +66,7 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-4 w-[260px] justify-end flex-shrink-0">
+      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 lg:flex-none lg:w-[260px] justify-end flex-shrink-0">
         <div className="text-sm text-gray-500 hidden lg:block">{formatDateTime(currentTime)}</div>
 
         <button className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors">

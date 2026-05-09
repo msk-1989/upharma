@@ -594,7 +594,7 @@ export function BackupPage() {
                     Clear
                   </Button>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(
                     Object.entries(importPreview) as [string, number][]
                   ).map(([key, count]) => (
@@ -655,7 +655,7 @@ export function BackupPage() {
                 {importPreview && (
                   <div className="rounded-lg bg-gray-50 border p-3">
                     <p className="text-sm font-medium text-gray-700 mb-2">Records to import:</p>
-                    <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                       {(
                         Object.entries(importPreview) as [string, number][]
                       ).map(([key, count]) => (

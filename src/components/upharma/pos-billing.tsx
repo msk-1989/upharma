@@ -893,7 +893,7 @@ export function POSBillingPage() {
                   {customers.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       <div className="flex items-center gap-2">
-                        <span className="truncate max-w-[160px]">{c.name}</span>
+                        <span className="truncate max-w-[100px] sm:max-w-[160px]">{c.name}</span>
                         {c.phone && (
                           <span className="text-gray-400 text-xs flex-shrink-0">
                             {c.phone}

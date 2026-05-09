@@ -540,7 +540,7 @@ export function SuppliersPage() {
                 placeholder="e.g. Apollo Pharmacy Distributors"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Contact Person</Label>
                 <Input
@@ -582,7 +582,7 @@ export function SuppliersPage() {
                 placeholder="e.g. 15, Industrial Area, Phase 2, Hyderabad"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
@@ -692,7 +692,7 @@ export function SuppliersPage() {
               </div>
 
               {/* Compliance Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg border border-border/60 bg-white">
                   <div className="flex items-center gap-1.5 text-gray-400 mb-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -722,7 +722,7 @@ export function SuppliersPage() {
               </div>
 
               {/* Balance Summary */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div
                   className={`p-4 rounded-lg border ${
                     selectedSupplier.balance > 0

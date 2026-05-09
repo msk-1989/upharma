@@ -199,14 +199,14 @@ export function MedicinesPage() {
           <Input placeholder="Search by name, generic, barcode, manufacturer..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 border-border/80" />
         </div>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-44 border-border/80"><SelectValue placeholder="Category" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-44 border-border/80"><SelectValue placeholder="Category" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterSchedule} onValueChange={setFilterSchedule}>
-          <SelectTrigger className="w-40 border-border/80"><SelectValue placeholder="Schedule" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40 border-border/80"><SelectValue placeholder="Schedule" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Schedules</SelectItem>
             {DRUG_SCHEDULES.map((s) => (
@@ -321,11 +321,11 @@ export function MedicinesPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Medicine' : 'Add New Medicine'}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
             <div className="space-y-1.5 col-span-2">
               <Label className="text-sm font-medium">Medicine Name *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border-border/80" placeholder="e.g. Dolo 650" />

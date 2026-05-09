@@ -518,7 +518,7 @@ export function CustomersPage() {
                 placeholder="e.g. Ramesh Kumar"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Phone</Label>
                 <Input
@@ -641,7 +641,7 @@ export function CustomersPage() {
               </div>
 
               {/* Balance Summary */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
                   <p className="text-xs text-emerald-600 font-medium">
                     Total Purchases

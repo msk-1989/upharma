@@ -277,7 +277,7 @@ export function ReportsPage() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-44 border-border/80"
+                  className="w-full sm:w-44 border-border/80"
                 />
               </div>
               <div className="space-y-1.5">
@@ -288,7 +288,7 @@ export function ReportsPage() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-44 border-border/80"
+                  className="w-full sm:w-44 border-border/80"
                 />
               </div>
               <Button

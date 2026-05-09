@@ -465,7 +465,7 @@ export function ReturnsPage() {
                 Return Type
               </Label>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-44 border-border/80">
+                <SelectTrigger className="w-full sm:w-44 border-border/80">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,7 +483,7 @@ export function ReturnsPage() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-44 border-border/80"
+                className="w-full sm:w-44 border-border/80"
               />
             </div>
             <div className="space-y-1.5">
@@ -494,7 +494,7 @@ export function ReturnsPage() {
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-44 border-border/80"
+                className="w-full sm:w-44 border-border/80"
               />
             </div>
             <Button
@@ -613,7 +613,7 @@ export function ReturnsPage() {
                       <td className="p-3 text-sm font-medium text-gray-900">
                         {formatCurrency(ret.totalAmount)}
                       </td>
-                      <td className="p-3 text-sm text-gray-600 max-w-[150px] truncate">
+                      <td className="p-3 text-sm text-gray-600 max-w-[100px] sm:max-w-[150px] truncate">
                         {ret.reason || '-'}
                       </td>
                       <td className="p-3 text-sm text-gray-500">
@@ -707,6 +707,7 @@ export function ReturnsPage() {
             {/* Items Table */}
             {returnItems.length > 0 && (
               <div className="border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50/80 border-b border-border">
@@ -798,6 +799,7 @@ export function ReturnsPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
 
@@ -981,6 +983,7 @@ export function ReturnsPage() {
                   Returned Items
                 </p>
                 <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50/80 border-b border-border">
@@ -1038,6 +1041,7 @@ export function ReturnsPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
 

@@ -407,38 +407,38 @@ export function SettingsPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="store" className="space-y-6">
-        <TabsList className="bg-gray-100/80 p-1 h-auto">
+        <TabsList className="bg-gray-100/80 p-1 h-auto flex-wrap">
           <TabsTrigger
             value="store"
-            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-sm px-4 py-2"
+            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-xs sm:text-sm px-3 sm:px-4 py-2"
           >
             <Store className="w-4 h-4 mr-1.5" />
             Store
           </TabsTrigger>
           <TabsTrigger
             value="gst"
-            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-sm px-4 py-2"
+            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-xs sm:text-sm px-3 sm:px-4 py-2"
           >
             <FileText className="w-4 h-4 mr-1.5" />
             GST
           </TabsTrigger>
           <TabsTrigger
             value="print"
-            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-sm px-4 py-2"
+            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-xs sm:text-sm px-3 sm:px-4 py-2"
           >
             <Printer className="w-4 h-4 mr-1.5" />
             Print
           </TabsTrigger>
           <TabsTrigger
             value="users"
-            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-sm px-4 py-2"
+            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-xs sm:text-sm px-3 sm:px-4 py-2"
           >
             <Users className="w-4 h-4 mr-1.5" />
             Users
           </TabsTrigger>
           <TabsTrigger
             value="invoice"
-            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-sm px-4 py-2"
+            className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-xs sm:text-sm px-3 sm:px-4 py-2"
           >
             <Receipt className="w-4 h-4 mr-1.5" />
             Invoice
