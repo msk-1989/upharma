@@ -504,12 +504,6 @@ export function POSBillingPage() {
     }
   }, [paymentMode]);
 
-  // ==================== CASH CHANGE CALCULATION ====================
-
-  const cashReceivedNum = parseFloat(cashReceived) || 0;
-  const cashChange = cashReceivedNum - grandTotal;
-  const isCashSufficient = cashReceivedNum >= grandTotal && grandTotal > 0;
-
   // ==================== KEYBOARD SHORTCUTS ====================
 
   useEffect(() => {
@@ -701,6 +695,12 @@ export function POSBillingPage() {
   const pointsToUse = useLoyaltyPoints ? Math.min(availablePoints, maxPointsDiscount) : 0;
   const loyaltyDiscount = pointsToUse; // ₹1 per point
   const grandTotal = Math.round((preDiscountTotal - loyaltyDiscount) * 100) / 100;
+
+  // ==================== CASH CHANGE CALCULATION ====================
+
+  const cashReceivedNum = parseFloat(cashReceived) || 0;
+  const cashChange = cashReceivedNum - grandTotal;
+  const isCashSufficient = cashReceivedNum >= grandTotal && grandTotal > 0;
 
   // ==================== CREDIT LIMIT CHECK ====================
 
