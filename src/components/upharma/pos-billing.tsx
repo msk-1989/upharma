@@ -1273,7 +1273,7 @@ export function POSBillingPage() {
                           Total
                         </th>
                         <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-6 pb-2">
-                          Date
+                          Date & Time
                         </th>
                       </tr>
                     </thead>
@@ -1309,7 +1309,7 @@ export function POSBillingPage() {
                               {formatINR(sale.grandTotal)}
                             </span>
                           </td>
-                          <td className="px-6 py-2.5 text-right">
+                          <td className="px-6 py-2.5 text-right whitespace-nowrap">
                             <span className="text-xs text-gray-500">
                               {formatDateTime(sale.createdAt)}
                             </span>
