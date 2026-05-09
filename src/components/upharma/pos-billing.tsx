@@ -1715,6 +1715,22 @@ export function POSBillingPage() {
             </CardContent>
           </Card>
 
+          {/* Quick Info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Items</p>
+              <p className="text-lg font-bold text-gray-900 mt-0.5">{cart.length}</p>
+            </div>
+            <div className="bg-emerald-50 rounded-lg p-3 text-center">
+              <p className="text-[11px] text-emerald-600 uppercase tracking-wider font-medium">
+                Total
+              </p>
+              <p className="text-lg font-bold text-emerald-700 mt-0.5">
+                {cart.length > 0 ? formatINR(grandTotal) : '₹0.00'}
+              </p>
+            </div>
+          </div>
+
           {/* Payment Mode — Footer Position */}
           <Card className="border-border/60 shadow-sm" ref={paymentSectionRef}>
             <CardHeader className="pb-3 pt-4">
@@ -1850,23 +1866,6 @@ export function POSBillingPage() {
               </>
             )}
           </Button>
-
-          {/* Quick Info */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Items</p>
-              <p className="text-lg font-bold text-gray-900 mt-0.5">{cart.length}</p>
-            </div>
-            <div className="bg-emerald-50 rounded-lg p-3 text-center">
-              <p className="text-[11px] text-emerald-600 uppercase tracking-wider font-medium">
-                Total
-              </p>
-              <p className="text-lg font-bold text-emerald-700 mt-0.5">
-                {cart.length > 0 ? formatINR(grandTotal) : '₹0.00'}
-              </p>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
