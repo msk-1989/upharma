@@ -19,6 +19,7 @@ import {
   ChevronRight,
   LayoutGrid,
   Stethoscope,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore, type PageKey } from '@/stores/app-store';
@@ -32,6 +33,7 @@ import {
 const navItems: { key: PageKey; label: string; icon: React.ElementType }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'pos-billing', label: 'POS Billing', icon: ShoppingCart },
+  { key: 'sales-bills', label: 'Sales Bills', icon: Receipt },
   { key: 'medicines', label: 'Medicines', icon: Pill },
   { key: 'inventory', label: 'Inventory', icon: Package },
   { key: 'purchases', label: 'Purchases', icon: Truck },
@@ -51,6 +53,7 @@ const navItems: { key: PageKey; label: string; icon: React.ElementType }[] = [
 const roleAccess: Record<string, string[]> = {
   'dashboard': ['Admin', 'Manager', 'Cashier'],
   'pos-billing': ['Admin', 'Manager', 'Cashier'],
+  'sales-bills': ['Admin', 'Manager', 'Cashier'],
   'medicines': ['Admin', 'Manager', 'Cashier'],
   'inventory': ['Admin', 'Manager'],
   'purchases': ['Admin', 'Manager'],

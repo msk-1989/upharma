@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export type PageKey =
   | 'dashboard'
   | 'pos-billing'
+  | 'sales-bills'
   | 'medicines'
   | 'inventory'
   | 'purchases'

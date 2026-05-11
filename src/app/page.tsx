@@ -8,6 +8,7 @@ import { Dashboard } from '@/components/upharma/dashboard';
 import { SettingsPage } from '@/components/upharma/settings';
 import { MedicinesPage } from '@/components/upharma/medicines';
 import { POSBillingPage } from '@/components/upharma/pos-billing';
+import { SalesHistoryPage } from '@/components/upharma/sales-history';
 import { InventoryPage } from '@/components/upharma/inventory';
 import { PurchasesPage } from '@/components/upharma/purchases';
 import { PurchaseOrdersPage } from '@/components/upharma/purchase-orders';
@@ -41,6 +42,8 @@ function PageContent() {
       return <MedicinesPage />;
     case 'pos-billing':
       return <POSBillingPage />;
+    case 'sales-bills':
+      return <SalesHistoryPage />;
     case 'inventory':
       return <InventoryPage />;
     case 'purchases':

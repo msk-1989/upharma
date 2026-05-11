@@ -43,7 +43,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { InvoicePrintDialog, InvoicePrintArea, loadStoreSettings } from './invoice-print';
+import { InvoicePrintDialog, InvoicePrintArea, loadStoreSettings, printInvoiceNewWindow } from './invoice-print';
 
 // ==================== TYPES ====================
 
@@ -735,17 +735,26 @@ export function POSBillingPage() {
   // ==================== PRINT INVOICE ====================
 
   const handlePrintInvoice = useCallback(async () => {
+    if (!lastSaleData) return;
     setShowPrintDialog(false);
-    // Load latest store settings into invoice-print cache before printing
-    await loadStoreSettings();
-    setTimeout(() => {
-      window.print();
-      // Reset print data after a delay
+    try {
+      await printInvoiceNewWindow(lastSaleData);
+    } catch {
+      // Fallback: if new window fails, try old method
+      await loadStoreSettings();
       setTimeout(() => {
-        setLastSaleData(null);
-      }, 500);
-    }, 100);
-  }, []);
+        window.print();
+        setTimeout(() => {
+          setLastSaleData(null);
+        }, 500);
+      }, 100);
+      return;
+    }
+    // Reset print data after a delay
+    setTimeout(() => {
+      setLastSaleData(null);
+    }, 1000);
+  }, [lastSaleData]);
 
   const handleSkipPrint = useCallback(() => {
     setShowPrintDialog(false);

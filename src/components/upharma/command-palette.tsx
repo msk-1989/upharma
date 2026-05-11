@@ -55,6 +55,7 @@ interface ResultGroup {
 const pageDefinitions: { key: PageKey; label: string; icon: React.ElementType; keywords: string[] }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, keywords: ['home', 'overview'] },
   { key: 'pos-billing', label: 'POS Billing', icon: ShoppingCart, keywords: ['billing', 'pos', 'counter', 'sale', 'bill'] },
+  { key: 'sales-bills', label: 'Sales Bills', icon: Receipt, keywords: ['sales', 'history', 'invoices', 'past bills', 'old bills', 'sold bills'] },
   { key: 'medicines', label: 'Medicines', icon: Pill, keywords: ['drug', 'pharma', 'product'] },
   { key: 'inventory', label: 'Inventory', icon: Package, keywords: ['stock', 'warehouse'] },
   { key: 'purchases', label: 'Purchases', icon: Truck, keywords: ['purchase', 'buy', 'vendor'] },
@@ -348,8 +349,8 @@ export function CommandPalette() {
             subtitle: `${sale.customerName || 'Walk-in'} · ${formatINR(sale.grandTotal)}`,
             icon: Receipt,
             action: () => {
-              // Navigate to reports to view invoices
-              setCurrentPage('reports');
+              // Navigate to sales bills to view invoices
+              setCurrentPage('sales-bills');
               setCommandPaletteOpen(false);
             },
           });
