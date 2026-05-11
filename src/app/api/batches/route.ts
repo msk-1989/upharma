@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
             baseUnit: true,
             unitsPerStrip: true,
             stripsPerBox: true,
+            reorderLevel: true,
           },
         },
         supplier: {

@@ -221,9 +221,9 @@ export function InventoryPage() {
       const medicinesData = await medicinesRes.json();
       const suppliersData = await suppliersRes.json();
 
-      setBatches(Array.isArray(batchesData) ? batchesData : batchesData.batches || []);
-      setMedicines(Array.isArray(medicinesData) ? medicinesData : medicinesData.medicines || []);
-      setSuppliers(Array.isArray(suppliersData) ? suppliersData : suppliersData.suppliers || []);
+      setBatches(Array.isArray(batchesData) ? batchesData : batchesData.data || batchesData.batches || []);
+      setMedicines(Array.isArray(medicinesData) ? medicinesData : medicinesData.data || medicinesData.medicines || []);
+      setSuppliers(Array.isArray(suppliersData) ? suppliersData : suppliersData.data || suppliersData.suppliers || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
