@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 // ==================== TYPES ====================
 
@@ -660,13 +661,21 @@ export function InvoicePrintDialog({ data, show, onClose, onPrint }: InvoicePrin
 // ==================== HIDDEN PRINT AREA (renders during window.print) ====================
 
 export function InvoicePrintArea({ data }: { data: InvoiceData | null }) {
-  if (!data) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!data || !mounted) return null;
+
+  // Use portal to render directly as body child — critical for @media print CSS
+  return createPortal(
     <div id="invoice-print-area" className="invoice-print-container">
       <InvoiceTemplate data={data} copyLabel="Customer Copy" />
       <CutLine />
       <InvoiceTemplate data={data} copyLabel="Store Copy" />
-    </div>
+    </div>,
+    document.body,
   );
 }

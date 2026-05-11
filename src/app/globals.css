@@ -150,7 +150,11 @@
     display: none !important;
   }
 
-  /* Show the print area */
+  /* Show the print area (belt-and-suspenders) */
+  #invoice-print-area {
+    display: block !important;
+  }
+
   .invoice-print-container {
     display: block !important;
   }
