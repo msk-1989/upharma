@@ -336,7 +336,7 @@ export function DayClosePage() {
 
 <div class="section">
   <table>
-    <tr><td><strong>Date</strong></td><td>${formatDateIST(dc.date)}</td>
+    <tr><td><strong>Date</strong></td><td>${formatDate(new Date(dc.date))}</td>
         <td><strong>Status</strong></td><td class="center">${dc.status}</td></tr>
     <tr><td><strong>Opened At</strong></td><td>${formatTime(dc.createdAt)}${dc.openedByUser ? ' by ' + dc.openedByUser.name : ''}</td>
         <td><strong>Closed At</strong></td><td>${formatTime(dc.updatedAt)}${dc.closedByUser ? ' by ' + dc.closedByUser.name : ''}</td></tr>
