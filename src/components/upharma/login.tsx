@@ -219,7 +219,14 @@ export function LoginScreen({ onLogin }: { onLogin: (user: AuthUser) => void }) 
             </Button>
           </form>
 
-          <p className="mt-6 text-xs text-center text-gray-400">Upharma Desktop ERP</p>
+          <div className="mt-6 space-y-1.5">
+            <p className="text-[11px] text-center text-gray-400 font-medium">Developed by Khizeroddin Shaikh</p>
+            <p className="text-[10px] text-center text-gray-400">
+              <a href="tel:+919890372241" className="hover:text-emerald-600 transition-colors">Call/WhatsApp: +91 98903 72241</a>
+            </p>
+            <p className="text-[10px] text-center text-gray-500 font-medium">MultiNex Multi Solutions LLP</p>
+            <p className="text-[9px] text-center text-gray-300">All Rights Reserved</p>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "Upharma - Pharmacy Management ERP",
   description: "Upharma Desktop ERP - Comprehensive pharmacy management system for medical stores. Manage inventory, billing, prescriptions, and more.",
   keywords: ["Upharma", "pharmacy", "ERP", "medical store", "billing", "inventory"],
-  authors: [{ name: "Upharma Team" }],
+  authors: [{ name: "Khizeroddin Shaikh" }],
   icons: {
     icon: [
       { url: "/favicon.svg", sizes: "any", type: "image/svg+xml" },

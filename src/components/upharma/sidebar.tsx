@@ -253,9 +253,10 @@ export function Sidebar() {
           )}
         >
           {!effectiveCollapsed && (
-            <span className="text-xs text-gray-400 whitespace-nowrap mr-auto">
-              Upharma v1.0.0
-            </span>
+            <div className="space-y-0.5 mr-auto">
+              <p className="text-[10px] text-gray-400 whitespace-nowrap leading-tight">MultiNex Multi Solutions LLP</p>
+              <p className="text-[9px] text-gray-300 whitespace-nowrap leading-tight">All Rights Reserved</p>
+            </div>
           )}
           <button
             onClick={toggleSidebar}

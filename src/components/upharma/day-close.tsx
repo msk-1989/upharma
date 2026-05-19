@@ -385,7 +385,7 @@ ${dc.notes ? `<div class="notes-section"><strong>Notes: </strong><p>${dc.notes.r
 
 <div class="footer">
   <span>Generated: ${now}</span>
-  <span>${pharmaName} ERP v1.0</span>
+  <span>MultiNex Multi Solutions LLP | All Rights Reserved</span>
 </div>
 
 <div class="signatures">

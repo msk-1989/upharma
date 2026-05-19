@@ -261,6 +261,7 @@ function buildInvoiceHTML(data: InvoiceData, store: typeof STORE_DEFAULTS): stri
             <p style="font-size:7px;color:#999;margin:0;text-align:center;">
               ${store.drugLicenseNo ? 'DL No: ' + store.drugLicenseNo : ''}${store.drugLicenseNo && store.fssaiNo ? ' | ' : ''}${store.fssaiNo ? 'FSSAI: ' + store.fssaiNo : ''}
             </p>
+            <p style="font-size:6.5px;color:#bbb;margin:2px 0 0 0;text-align:center;">MultiNex Multi Solutions LLP | All Rights Reserved</p>
             ${data.loyaltyPointsEarned > 0 ? `<p style="font-size:8px;color:#b45309;margin:3px 0 0 0;text-align:center;font-weight:600;">Loyalty Points Earned: ${data.loyaltyPointsEarned}</p>` : ''}
           </div>
           <div style="margin-left:10px;text-align:center;flex-shrink:0;" id="qr-placeholder-${copyLabel === 'Store Copy' ? 'store' : 'customer'}"></div>

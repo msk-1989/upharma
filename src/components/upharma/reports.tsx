@@ -223,7 +223,7 @@ export function ReportsPage() {
         .hidden-print { display: none; }
         @media print { body { padding: 10px; } .summary-cards { gap: 8px; } }
       </style></head><body>
-      <div class="print-header"><h1>Upharma - Pharmacy Management</h1><p class="text-muted">Report: ${reportType.toUpperCase()} | Generated: ${new Date().toLocaleString('en-IN')}</p></div>
+      <div class="print-header"><h1>Upharma - Pharmacy Management</h1><p class="text-muted">Report: ${reportType.toUpperCase()} | Generated: ${new Date().toLocaleString('en-IN')}</p><p style="font-size:9px;color:#999;margin-top:2px;">MultiNex Multi Solutions LLP | All Rights Reserved</p></div>
       ${content.innerHTML}
       <script>window.onload = function() { window.print(); }</script>
       </body></html>`);
