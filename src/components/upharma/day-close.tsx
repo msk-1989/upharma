@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/stores/app-store';
+import { useToast } from '@/hooks/use-toast';
 import { formatDateIST } from '@/lib/dates';
 
 // ─────────── Types ───────────
@@ -284,15 +285,23 @@ export function DayClosePage() {
   };
 
   // ── Print ──
-  const handlePrint = () => {
+  const { toast } = useToast();
+  const [printLoading, setPrintLoading] = useState(false);
+
+  const handlePrint = async () => {
     const dc = dayClose;
-    if (!dc) return;
+    if (!dc) {
+      toast({ title: 'Error', description: 'No day close data available to print.', variant: 'destructive' });
+      return;
+    }
 
-    const pharmaName = 'uPharma';
-    const now = new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' });
-    const printDate = formatDateIST(new Date());
+    setPrintLoading(true);
+    try {
+      const pharmaName = 'uPharma';
+      const now = new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' });
+      const printDate = formatDateIST(new Date());
 
-    const html = `<!DOCTYPE html>
+      const html = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>Day Close Report - ${printDate}</title>
 <style>
   @page { size: A4 portrait; margin: 8mm; }
@@ -337,12 +346,12 @@ export function DayClosePage() {
 <div class="section">
   <h2>Sales Summary</h2>
   <table>
-    <tr><th>Sales Type</th><th class="right">Amount (₹)</th></tr>
+    <tr><th>Sales Type</th><th class="right">Amount</th></tr>
     <tr><td>Total Sales</td><td class="right">${formatCurrency(dc.totalSales)}</td></tr>
-    <tr><td>&nbsp;&nbsp;Cash Sales</td><td class="right">${formatCurrency(dc.totalCashSales)}</td></tr>
-    <tr><td>&nbsp;&nbsp;Card Sales</td><td class="right">${formatCurrency(dc.totalCardSales)}</td></tr>
-    <tr><td>&nbsp;&nbsp;UPI Sales</td><td class="right">${formatCurrency(dc.totalUpiSales)}</td></tr>
-    <tr><td>&nbsp;&nbsp;Credit Sales</td><td class="right">${formatCurrency(dc.totalCreditSales)}</td></tr>
+    <tr><td>Cash Sales</td><td class="right">${formatCurrency(dc.totalCashSales)}</td></tr>
+    <tr><td>Card Sales</td><td class="right">${formatCurrency(dc.totalCardSales)}</td></tr>
+    <tr><td>UPI Sales</td><td class="right">${formatCurrency(dc.totalUpiSales)}</td></tr>
+    <tr><td>Credit Sales</td><td class="right">${formatCurrency(dc.totalCreditSales)}</td></tr>
     <tr class="total-row"><td>Total Returns</td><td class="right">${formatCurrency(dc.totalReturns)}</td></tr>
   </table>
 </div>
@@ -360,14 +369,14 @@ export function DayClosePage() {
 <div class="section">
   <h2>Cash Reconciliation</h2>
   <table>
-    <tr><th>Description</th><th class="right">Amount (₹)</th></tr>
+    <tr><th>Description</th><th class="right">Amount</th></tr>
     <tr><td>Opening Cash</td><td class="right">${formatCurrency(dc.openCash)}</td></tr>
     <tr><td>(+) Cash Sales</td><td class="right">${formatCurrency(dc.totalCashSales)}</td></tr>
     <tr><td>(-) Cash Returns</td><td class="right">- ${formatCurrency(dc.totalReturns)}</td></tr>
     <tr class="total-row"><td>Expected Cash in Drawer</td><td class="right">${formatCurrency(dc.expectedCash)}</td></tr>
     <tr><td>Actual Cash Counted</td><td class="right">${formatCurrency(dc.closeCash)}</td></tr>
     <tr><td><strong>Difference</strong></td>
-        <td class="right ${dc.difference === 0 ? 'diff-ok' : dc.difference < 0 ? 'diff-bad' : 'diff-over'}">${formatCurrency(dc.difference)}${dc.difference === 0 ? ' ✓' : ''}</td></tr>
+        <td class="right ${dc.difference === 0 ? 'diff-ok' : dc.difference < 0 ? 'diff-bad' : 'diff-over'}">${formatCurrency(dc.difference)}${dc.difference === 0 ? ' Matched' : ''}</td></tr>
   </table>
 </div>
 
@@ -386,28 +395,48 @@ ${dc.notes ? `<div class="notes-section"><strong>Notes: </strong><p>${dc.notes.r
 
 </body></html>`;
 
-    // Use hidden iframe to avoid popup blocker
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
+      // Create blob URL and open in new tab
+      const blob = new Blob([html], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
 
-    const iframeDoc = iframe.contentWindow?.document;
-    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+      const printWindow = window.open(blobUrl, '_blank');
+      if (!printWindow) {
+        // Popup blocked - try alternative: create download
+        URL.revokeObjectURL(blobUrl);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        // Re-create blob since we revoked it
+        const blob2 = new Blob([html], { type: 'text/html' });
+        const blobUrl2 = URL.createObjectURL(blob2);
+        link.href = blobUrl2;
+        link.download = `day-close-report-${printDate}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl2), 5000);
+        toast({
+          title: 'Popup Blocked',
+          description: 'Print page was downloaded instead. Open the downloaded file and use Ctrl+P to print.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-    iframeDoc.open();
-    iframeDoc.write(html);
-    iframeDoc.close();
+      // Wait for content to load then trigger print
+      printWindow.addEventListener('load', () => {
+        setTimeout(() => {
+          printWindow.print();
+          URL.revokeObjectURL(blobUrl);
+        }, 500);
+      });
 
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-
-    // Cleanup after print dialog closes
-    setTimeout(() => { document.body.removeChild(iframe); }, 10000);
+      toast({ title: 'Print Preview', description: 'Print dialog will open shortly...' });
+    } catch (err) {
+      console.error('Print failed:', err);
+      toast({ title: 'Print Failed', description: 'Could not generate print report. Please try again.', variant: 'destructive' });
+    } finally {
+      setPrintLoading(false);
+    }
   };
 
   // ── Calculated fields ──
@@ -805,8 +834,13 @@ ${dc.notes ? `<div class="notes-section"><strong>Notes: </strong><p>${dc.notes.r
           </Button>
         )}
         {isClosed && (
-          <Button variant="outline" className="gap-2 border-gray-300 text-gray-700" onClick={handlePrint}>
-            <Printer className="w-4 h-4" /> Print Day Close Report
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+            onClick={handlePrint}
+            disabled={printLoading}
+          >
+            <Printer className={`w-4 h-4 ${printLoading ? 'animate-pulse' : ''}`} />
+            {printLoading ? 'Generating Report...' : 'Print Day Close Report'}
           </Button>
         )}
       </div>
