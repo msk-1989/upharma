@@ -351,7 +351,7 @@ export function CustomersPage() {
         />
         <StatCard
           label="Total Loyalty Points"
-          value={totalLoyaltyPoints.toLocaleString('en-IN')}
+          value={(totalLoyaltyPoints ?? 0).toLocaleString('en-IN')}
           icon={Star}
           color="text-amber-600"
           bg="bg-amber-50"

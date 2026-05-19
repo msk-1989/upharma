@@ -377,7 +377,7 @@ export function RacksPage() {
         />
         <StatCard
           label="Total Items"
-          value={totalItems.toLocaleString('en-IN')}
+          value={(totalItems ?? 0).toLocaleString('en-IN')}
           icon={Package}
           color="text-amber-600"
           bg="bg-amber-50"
@@ -494,7 +494,7 @@ export function RacksPage() {
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <BoxSelect className="w-3.5 h-3.5" />
-                      <span>{rack.totalItems.toLocaleString('en-IN')} items</span>
+                      <span>{(rack.totalItems ?? 0).toLocaleString('en-IN')} items</span>
                     </div>
                   </div>
                   {/* Hover actions */}
@@ -670,7 +670,7 @@ export function RacksPage() {
                     <span className="text-xs">Total Items</span>
                   </div>
                   <p className="text-sm font-medium text-gray-900">
-                    {selectedRack.totalItems.toLocaleString('en-IN')}
+                    {(selectedRack.totalItems ?? 0).toLocaleString('en-IN')}
                   </p>
                 </div>
               </div>
@@ -749,7 +749,7 @@ export function RacksPage() {
                               </td>
                               <td className="p-3 text-right">
                                 <span className="text-sm font-medium text-gray-900">
-                                  {batch.stockQty.toLocaleString('en-IN')}
+                                  {(batch.stockQty ?? 0).toLocaleString('en-IN')}
                                 </span>
                               </td>
                               <td className="p-3">

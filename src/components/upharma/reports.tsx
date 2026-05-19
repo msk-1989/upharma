@@ -1730,7 +1730,7 @@ function ScheduleInventoryReport({ data }: { data: any }) {
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-bold text-gray-900">{style.label}</p>
-                    <p className="text-xs text-gray-500">{group.totalItems} items | {group.totalUnits.toLocaleString('en-IN')} units</p>
+                    <p className="text-xs text-gray-500">{group.totalItems ?? 0} items | {(group.totalUnits ?? 0).toLocaleString('en-IN')} units</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
@@ -1884,7 +1884,7 @@ function ScheduleSalesReport({ data, dateFrom, dateTo }: { data: any; dateFrom: 
         <MetricCard label="Schedules Sold" value={String(summary.totalSchedules)} icon={Shield} color="text-emerald-600" bg="bg-emerald-50" />
         <MetricCard label="Total Sales" value={String(summary.totalSales)} icon={ShoppingCart} color="text-blue-600" bg="bg-blue-50" />
         <MetricCard label="Total Revenue" value={formatCurrency(summary.totalRevenue)} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50" />
-        <MetricCard label="Total Qty Sold" value={summary.totalQuantity.toLocaleString('en-IN')} icon={Package} color="text-purple-600" bg="bg-purple-50" />
+        <MetricCard label="Total Qty Sold" value={(summary.totalQuantity ?? 0).toLocaleString('en-IN')} icon={Package} color="text-purple-600" bg="bg-purple-50" />
       </div>
 
       {/* Schedule Groups */}

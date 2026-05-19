@@ -308,7 +308,7 @@ export function DoctorsPage() {
         />
         <StatCard
           label="Prescriptions"
-          value={thisMonthPrescriptions.toLocaleString('en-IN')}
+          value={(thisMonthPrescriptions ?? 0).toLocaleString('en-IN')}
           icon={FileText}
           color="text-blue-600"
           bg="bg-blue-50"

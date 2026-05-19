@@ -589,7 +589,7 @@ export function InventoryPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {stats.totalUnits.toLocaleString()} total units in stock
+              {(stats.totalUnits ?? 0).toLocaleString()} total units in stock
             </p>
           </CardContent>
         </Card>
