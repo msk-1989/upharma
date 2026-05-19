@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireDayOpen } from '@/lib/day-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,14 @@ export async function GET() {
     });
     const totalReturns = returns.reduce((sum, r) => sum + r.totalAmount, 0);
 
+    // Cash returns only: look up original sale payment mode
+    const retRefIds = returns.map(r => r.referenceId);
+    const retOrigSales = retRefIds.length > 0
+      ? await db.sale.findMany({ where: { id: { in: retRefIds } }, select: { id: true, paymentMode: true } })
+      : [];
+    const cashRetSaleIds = new Set(retOrigSales.filter(s => s.paymentMode === 'Cash').map(s => s.id));
+    const totalCashReturns = returns.filter(r => cashRetSaleIds.has(r.referenceId)).reduce((sum, r) => sum + r.totalAmount, 0);
+
     // Cash withdrawals for this shift
     const withdrawals = await db.cashWithdrawal.findMany({
       where: { counterShiftId: activeShift.id },
@@ -63,6 +72,7 @@ export async function GET() {
       totalUpiSales: Math.round(totalUpiSales * 100) / 100,
       totalCreditSales: Math.round(totalCreditSales * 100) / 100,
       totalReturns: Math.round(totalReturns * 100) / 100,
+      totalCashReturns: Math.round(totalCashReturns * 100) / 100,
       totalExpenses: Math.round(totalExpenses * 100) / 100,
       totalInvoices,
     };
@@ -94,6 +104,12 @@ export async function POST(request: NextRequest) {
     }
     if (!userId) {
       return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
+    }
+
+    // Verify the day is open before allowing a shift to be opened
+    const dayCheck = await requireDayOpen();
+    if (!dayCheck.allowed) {
+      return NextResponse.json({ success: false, error: 'Cannot open a counter shift — Day has not been opened yet. Please open the day first from Day Closing page.' }, { status: 403 });
     }
 
     // Verify counter exists and is active

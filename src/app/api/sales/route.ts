@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireActiveShift } from '@/lib/shift-guard';
+import { requireDayOpen } from '@/lib/day-guard';
 
 /** Cache role lookups during request (avoids repeated DB calls) */
 const roleCache = new Map<string, string>();
@@ -35,8 +36,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { customerId, customerName, doctorName, paymentMode, items, userId, loyaltyPointsUsed } = body;
 
+    // Day check: Admin bypasses (handled by role in requireDayOpen logic)
+    const userRole = userId ? await getUserRole(userId) : undefined;
+    const isAdmin = userRole === 'Admin' || userRole === 'Super Admin';
+    if (!isAdmin) {
+      const dayCheck = await requireDayOpen();
+      if (!dayCheck.allowed) {
+        return NextResponse.json({ success: false, error: dayCheck.error }, { status: 403 });
+      }
+    }
+
     // Shift check: Admin/Owner bypasses, others need active shift
-    const shiftCheck = await requireActiveShift(userId ? await getUserRole(userId) : undefined);
+    const shiftCheck = await requireActiveShift(userRole);
     if (!shiftCheck.allowed) {
       return NextResponse.json({ success: false, error: shiftCheck.error }, { status: 403 });
     }

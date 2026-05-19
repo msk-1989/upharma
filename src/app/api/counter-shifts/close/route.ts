@@ -80,15 +80,23 @@ export async function POST(request: NextRequest) {
     });
     const totalReturns = returns.reduce((sum, r) => sum + r.totalAmount, 0);
 
+    // Look up original sale payment modes for cash returns only
+    const retRefIds = returns.map(r => r.referenceId);
+    const retOrigSales = retRefIds.length > 0
+      ? await db.sale.findMany({ where: { id: { in: retRefIds } }, select: { id: true, paymentMode: true } })
+      : [];
+    const cashRetSaleIds = new Set(retOrigSales.filter(s => s.paymentMode === 'Cash').map(s => s.id));
+    const totalCashReturns = returns.filter(r => cashRetSaleIds.has(r.referenceId)).reduce((sum, r) => sum + r.totalAmount, 0);
+
     // Cash withdrawals for this shift
     const withdrawals = await db.cashWithdrawal.findMany({
       where: { counterShiftId: shift.id },
     });
     const totalExpenses = withdrawals.reduce((sum, w) => sum + w.amount, 0);
 
-    // Calculate expected cash and difference
+    // Calculate expected cash and difference (only cash returns reduce drawer)
     const actualCloseCash = Math.round(Number(closingCash) * 100) / 100;
-    const expectedCash = Math.round((shift.openingCash + totalCashSales - totalReturns - totalExpenses) * 100) / 100;
+    const expectedCash = Math.round((shift.openingCash + totalCashSales - totalCashReturns - totalExpenses) * 100) / 100;
     const cashDifference = Math.round((actualCloseCash - expectedCash) * 100) / 100;
 
     // End all active staff sessions for this shift

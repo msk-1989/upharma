@@ -95,12 +95,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const res = await fetch('/api/counter-shifts/active');
       const json = await res.json();
-      if (json.success && json.shift) {
+      // API returns { success, data: { hasActiveShift, shift: {...} } }
+      const shift = json.data?.shift || null;
+      if (json.success && shift) {
         set({
-          shiftStatus: json.shift.status,
-          activeShiftId: json.shift.id,
-          activeCounterId: json.shift.counterId,
-          activeCounterName: json.shift.counterName,
+          shiftStatus: shift.shiftStatus || 'Open',
+          activeShiftId: shift.id,
+          activeCounterId: shift.counterId,
+          activeCounterName: shift.counter?.name || null,
         });
       } else {
         set({

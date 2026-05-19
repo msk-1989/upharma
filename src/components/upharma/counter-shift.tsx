@@ -230,20 +230,21 @@ export function CounterShiftPage() {
   // ── Fetch active shift and related data ──
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/counter-shifts/active');
+      // Use the full shift endpoint (returns shift + liveSummary + staffSessions)
+      const res = await fetch('/api/counter-shifts');
       const json = await res.json();
-      if (json.success && json.shift) {
-        setActiveShift(json.shift);
-        setLiveSummary(json.liveSummary || null);
-        setStaffSessions(json.staffSessions || []);
-        setWithdrawals(json.withdrawals || []);
+      const shift = json.data?.shift || null;
+      if (json.success && shift) {
+        setActiveShift(shift);
+        setLiveSummary(json.data.liveSummary || null);
+        setStaffSessions(shift.staffSessions || []);
 
         // Update global store
-        setShiftStatus(json.shift.status);
+        setShiftStatus(shift.shiftStatus);
         setShiftInfo({
-          shiftId: json.shift.id,
-          counterId: json.shift.counterId,
-          counterName: json.shift.counterName,
+          shiftId: shift.id,
+          counterId: shift.counterId,
+          counterName: shift.counter?.name || null,
         });
       } else {
         setActiveShift(null);

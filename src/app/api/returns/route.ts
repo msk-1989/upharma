@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireActiveShift } from '@/lib/shift-guard';
+import { requireDayOpen } from '@/lib/day-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +62,17 @@ export async function POST(request: NextRequest) {
     const shiftCheck = await requireActiveShift();
     if (!shiftCheck.allowed) {
       return NextResponse.json({ success: false, error: shiftCheck.error }, { status: 403 });
+    }
+
+    // Day-open check (non-admin)
+    if (userId) {
+      const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+      if (user && user.role !== 'Admin' && user.role !== 'Super Admin') {
+        const dayCheck = await requireDayOpen();
+        if (!dayCheck.allowed) {
+          return NextResponse.json({ success: false, error: dayCheck.error }, { status: 403 });
+        }
+      }
     }
 
     if (!type || !items || items.length === 0) {

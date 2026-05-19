@@ -51,10 +51,13 @@ export async function GET() {
     const totalUpiSales = sales.filter(s => s.paymentMode === 'UPI').reduce((sum, s) => sum + s.grandTotal, 0);
     const totalCreditSales = sales.filter(s => s.paymentMode === 'Credit').reduce((sum, s) => sum + s.grandTotal, 0);
     const totalReturns = returns.reduce((sum, r) => sum + r.totalAmount, 0);
-    const totalCashReturns = returns.filter(r => {
-      // For sale returns, look up the original sale payment mode
-      return r.totalAmount > 0;
-    }).reduce((sum, r) => sum + r.totalAmount, 0);
+    // Calculate cash returns: look up original sale's payment mode
+    const saleReturnIds = returns.filter(r => r.type === 'SALE_RETURN').map(r => r.referenceId);
+    const originalSales = saleReturnIds.length > 0
+      ? await db.sale.findMany({ where: { id: { in: saleReturnIds } }, select: { id: true, paymentMode: true } })
+      : [];
+    const cashSaleIds = new Set(originalSales.filter(s => s.paymentMode === 'Cash').map(s => s.id));
+    const totalCashReturns = returns.filter(r => cashSaleIds.has(r.referenceId)).reduce((sum, r) => sum + r.totalAmount, 0);
     const totalPurchases = purchases.reduce((sum, p) => sum + p.grandTotal, 0);
     const totalInvoices = sales.length;
     const totalReturnNotes = returns.length;
@@ -152,6 +155,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Today is already closed' }, { status: 400 });
       }
 
+      // Check for active counter shifts — must close all before closing the day
+      const activeShifts = await db.counterShift.findMany({
+        where: { shiftStatus: 'Open' },
+        select: { id: true, counterId: true },
+      });
+      if (activeShifts.length > 0) {
+        const shiftCounters = await db.counter.findMany({
+          where: { id: { in: activeShifts.map(s => s.counterId) } },
+          select: { name: true },
+        });
+        const counterNames = shiftCounters.map(c => c.name).join(', ');
+        return NextResponse.json(
+          { success: false, error: `Cannot close the day while ${activeShifts.length} counter shift(s) are still open (${counterNames}). Please close all shifts first.` },
+          { status: 400 }
+        );
+      }
+
       if (closeCash === undefined || closeCash === null) {
         return NextResponse.json({ success: false, error: 'Closing cash amount is required' }, { status: 400 });
       }
@@ -173,12 +193,19 @@ export async function POST(request: NextRequest) {
       const totalUpiSales = sales.filter(s => s.paymentMode === 'UPI').reduce((sum, s) => sum + s.grandTotal, 0);
       const totalCreditSales = sales.filter(s => s.paymentMode === 'Credit').reduce((sum, s) => sum + s.grandTotal, 0);
       const totalReturns = returns.reduce((sum, r) => sum + r.totalAmount, 0);
+      // Calculate cash returns: look up original sale payment mode
+      const saleReturnIds = returns.map(r => r.referenceId);
+      const origSales = saleReturnIds.length > 0
+        ? await db.sale.findMany({ where: { id: { in: saleReturnIds } }, select: { id: true, paymentMode: true } })
+        : [];
+      const cashSaleIds = new Set(origSales.filter(s => s.paymentMode === 'Cash').map(s => s.id));
+      const totalCashReturns = returns.filter(r => cashSaleIds.has(r.referenceId)).reduce((sum, r) => sum + r.totalAmount, 0);
       const totalPurchases = purchases.reduce((sum, p) => sum + p.grandTotal, 0);
       const totalInvoices = sales.length;
       const totalReturnNotes = returns.length;
 
       const actualCloseCash = Math.round(Number(closeCash) * 100) / 100;
-      const expectedCash = Math.round((existing.openCash + totalCashSales - totalReturns) * 100) / 100;
+      const expectedCash = Math.round((existing.openCash + totalCashSales - totalCashReturns) * 100) / 100;
       const difference = Math.round((actualCloseCash - expectedCash) * 100) / 100;
 
       const dayClose = await db.dayClose.update({
