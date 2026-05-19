@@ -551,7 +551,7 @@ export function InventoryPage() {
   // ─── Render ──────────────────────────────────────────────────────
 
   return (
-    <div className="p-6 space-y-6 max-w-full">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full">
       {/* ── Header ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

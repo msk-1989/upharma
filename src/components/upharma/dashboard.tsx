@@ -139,7 +139,7 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-48 bg-gray-200 rounded" />
           <div className="grid grid-cols-4 gap-4">
@@ -314,7 +314,7 @@ export function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <p className="text-lg font-bold text-emerald-700">₹{todaySales.toLocaleString('en-IN')}</p>
+            <p className="text-lg font-bold text-emerald-700">₹{(todaySales ?? 0).toLocaleString('en-IN')}</p>
             <p className="text-xs text-emerald-600">{todayBills} bills completed</p>
           </CardContent>
         </Card>
@@ -322,10 +322,10 @@ export function Dashboard() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Revenue" value={`₹${data.totalSales.toLocaleString('en-IN')}`} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50" change="+12.5%" />
+        <StatCard label="Total Revenue" value={`₹${(data.totalSales ?? 0).toLocaleString('en-IN')}`} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50" change="+12.5%" />
         <StatCard label="Total Orders" value={String(data.totalOrders)} icon={ShoppingCart} color="text-blue-600" bg="bg-blue-50" change="+8.2%" />
         <StatCard label="Total Customers" value={String(data.totalCustomers)} icon={Users} color="text-purple-600" bg="bg-purple-50" change="+5.1%" />
-        <StatCard label="Inventory Value" value={`₹${data.inventoryValue.toLocaleString('en-IN')}`} icon={Package} color="text-orange-600" bg="bg-orange-50" />
+        <StatCard label="Inventory Value" value={`₹${(data.inventoryValue ?? 0).toLocaleString('en-IN')}`} icon={Package} color="text-orange-600" bg="bg-orange-50" />
       </div>
 
       {/* Detailed Alerts */}
@@ -408,7 +408,7 @@ export function Dashboard() {
                   <tr key={sale.id} className="border-b border-border/50 last:border-0 hover:bg-gray-50/50">
                     <td className="py-3 pr-4 text-sm font-medium text-emerald-600">{sale.invoiceNo}</td>
                     <td className="py-3 pr-4 text-sm text-gray-700">{sale.customer?.name || 'Walk-in'}</td>
-                    <td className="py-3 pr-4 text-sm font-medium text-gray-900">₹{sale.grandTotal.toLocaleString('en-IN')}</td>
+                    <td className="py-3 pr-4 text-sm font-medium text-gray-900">₹{(sale.grandTotal ?? 0).toLocaleString('en-IN')}</td>
                     <td className="py-3 pr-4"><Badge variant="secondary" className={`text-xs ${statusColors[sale.status] || ''}`}>{sale.status}</Badge></td>
                     <td className="py-3 text-sm text-gray-500">{formatDate(sale.date)}</td>
                   </tr>
@@ -437,7 +437,7 @@ export function Dashboard() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-semibold text-gray-900">{med.sales}</p>
-                  <p className="text-xs text-gray-400">₹{med.total.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-gray-400">₹{(med.total ?? 0).toLocaleString('en-IN')}</p>
                 </div>
               </div>
             ))}

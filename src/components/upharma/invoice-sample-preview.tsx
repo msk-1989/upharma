@@ -16,6 +16,7 @@ interface StoreInfo {
 }
 
 function formatINR(amount: number): string {
+  if (amount == null || isNaN(amount)) return 'Rs. 0.00';
   return `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 

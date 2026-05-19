@@ -20,12 +20,11 @@ export const metadata: Metadata = {
   authors: [{ name: "Upharma Team" }],
   icons: {
     icon: [
+      { url: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.png", sizes: "1024x1024", type: "image/png" },
-      { url: "/logo.svg", sizes: "any", type: "image/svg+xml" },
     ],
-    shortcut: "/favicon.ico",
-    apple: "/logo.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 

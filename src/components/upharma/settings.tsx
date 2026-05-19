@@ -579,7 +579,7 @@ export function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-3 sm:p-6 flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
           <p className="text-sm text-gray-500">Loading settings...</p>
@@ -589,7 +589,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-full">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

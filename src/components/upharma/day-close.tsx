@@ -299,7 +299,7 @@ export function DayClosePage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-56 bg-gray-200 rounded" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

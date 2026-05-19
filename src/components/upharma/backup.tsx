@@ -417,7 +417,7 @@ export function BackupPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6 max-w-full">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-56 bg-gray-200 rounded" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -437,7 +437,7 @@ export function BackupPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-full">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Database Backup</h1>
@@ -453,7 +453,7 @@ export function BackupPage() {
                 <div className="space-y-1.5">
                   <p className="text-xs text-gray-500 font-medium">{label}</p>
                   <p className="text-xl font-bold text-gray-900">
-                    {summary ? summary[key].toLocaleString('en-IN') : '—'}
+                    {summary ? (summary[key] ?? 0).toLocaleString('en-IN') : '—'}
                   </p>
                 </div>
                 <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center`}>
@@ -608,7 +608,7 @@ export function BackupPage() {
                     >
                       <p className="text-xs text-gray-500 capitalize">{key}</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {count.toLocaleString('en-IN')}
+                        {(count ?? 0).toLocaleString('en-IN')}
                       </p>
                     </div>
                   ))}

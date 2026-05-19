@@ -348,7 +348,7 @@ export function ReturnsPage() {
 
   if (loading && returns.length === 0) {
     return (
-      <div className="p-6 space-y-6 max-w-full">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-48 bg-gray-200 rounded" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -363,7 +363,7 @@ export function ReturnsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-full">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
