@@ -3,16 +3,20 @@ import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/counters — Return all counters with their active shift status
-export async function GET() {
+// GET /api/counters — Return counters with their active shift status
+// ?all=true to include inactive counters (for settings management)
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const showAll = searchParams.get('all') === 'true';
+
+    const whereClause = showAll ? {} : { status: 'Active' };
+
     const counters = await db.counter.findMany({
-      where: {
-        status: 'Active',
-      },
+      where: whereClause,
       include: {
         _count: {
-          select: { counterShifts: true },
+          select: { counterShifts: true, assignedUsers: true },
         },
         counterShifts: {
           where: { shiftStatus: 'Open' },
@@ -38,6 +42,7 @@ export async function GET() {
       createdAt: counter.createdAt,
       updatedAt: counter.updatedAt,
       totalShifts: counter._count.counterShifts,
+      assignedUsersCount: counter._count.assignedUsers,
       activeShift: counter.counterShifts[0] || null,
     }));
 

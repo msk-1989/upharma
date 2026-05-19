@@ -54,7 +54,8 @@ import { formatDateIST } from '@/lib/dates';
 interface CounterInfo {
   id: string;
   name: string;
-  isActive: boolean;
+  status: string;
+  location?: string;
 }
 
 interface LiveSummary {
@@ -271,7 +272,7 @@ export function CounterShiftPage() {
       const res = await fetch('/api/counters');
       const json = await res.json();
       if (json.success) {
-        setCounters((json.counters || []).filter((c: CounterInfo) => c.isActive));
+        setCounters(json.data || []);
       }
     } catch (err) {
       console.error('Failed to fetch counters:', err);
