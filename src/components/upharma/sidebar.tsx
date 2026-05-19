@@ -239,7 +239,7 @@ export function Sidebar() {
         <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden">
           <ul className="space-y-0.5 px-2">
             {visibleNavItems.map((item) => {
-              const isLocked = !isShiftExempt && !exemptPages.includes(item.key) && (dayStatus !== 'Open' || shiftStatus !== 'Open');
+              const isLocked = !isShiftExempt && !dayExemptPages.includes(item.key) && (dayStatus !== 'Open' || shiftStatus !== 'Open');
               return (
                 <SidebarNavItem
                   key={item.key}
