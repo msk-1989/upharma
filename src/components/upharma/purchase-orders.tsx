@@ -727,7 +727,8 @@ export function PurchaseOrdersPage() {
                       </td>
                       <td className="p-3 text-sm text-gray-600">{fmtDate(po.date)}</td>
                       <td className="p-3">
-                        <span className="text-sm text-gray-700">{po.supplier?.name || '—'}</span>
+                        <div className="text-sm text-gray-700 font-medium">{po.supplier?.name || '—'}</div>
+                        {po.supplier?.address && <p className="text-xs text-gray-400 mt-0.5">{po.supplier.address}</p>}
                         {po.expectedDate && (
                           <p className="text-xs text-gray-400">Exp: {fmtDate(po.expectedDate)}</p>
                         )}
@@ -1068,6 +1069,7 @@ export function PurchaseOrdersPage() {
                     <div>
                       <p className="text-xs text-gray-500 font-medium">Supplier</p>
                       <p className="text-sm font-semibold text-gray-900 mt-0.5">{selectedPO.supplier?.name || '—'}</p>
+                      {selectedPO.supplier?.address && <p className="text-xs text-gray-400">{selectedPO.supplier.address}</p>}
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 font-medium">Date</p>
@@ -1239,6 +1241,7 @@ export function PurchaseOrdersPage() {
                 <div>
                   <p className="text-xs text-teal-600 font-medium">Supplier</p>
                   <p className="text-sm font-semibold text-gray-900">{selectedPO.supplier?.name}</p>
+                  {selectedPO.supplier?.address && <p className="text-xs text-gray-400">{selectedPO.supplier.address}</p>}
                 </div>
                 <div>
                   <p className="text-xs text-teal-600 font-medium">PO Value</p>

@@ -102,7 +102,7 @@ async function generatePurchasesTallyXml(from: Date, to: Date) {
       status: 'Completed',
     },
     include: {
-      supplier: { select: { name: true } },
+      supplier: { select: { name: true, address: true } },
       items: {
         select: {
           cgst: true,

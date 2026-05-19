@@ -62,7 +62,7 @@ async function generatePurchasesCsv(from: Date, to: Date): Promise<string> {
       status: 'Completed',
     },
     include: {
-      supplier: { select: { name: true } },
+      supplier: { select: { name: true, address: true } },
     },
     orderBy: { date: 'asc' },
   });

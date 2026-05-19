@@ -486,7 +486,8 @@ export function PurchasesPage() {
                         <span className="text-sm font-semibold text-gray-900">{p.invoiceNo}</span>
                       </td>
                       <td className="p-3">
-                        <span className="text-sm text-gray-700">{p.supplier?.name || '—'}</span>
+                        <div className="text-sm text-gray-700 font-medium">{p.supplier?.name || '—'}</div>
+                        {p.supplier?.address && <p className="text-xs text-gray-400 mt-0.5">{p.supplier.address}</p>}
                         {p.user?.name && <p className="text-xs text-gray-400">by {p.user.name}</p>}
                       </td>
                       <td className="p-3 text-sm text-gray-600">{fmtDate(p.date)}</td>
@@ -800,6 +801,7 @@ export function PurchasesPage() {
                     <div>
                       <p className="text-xs text-gray-500 font-medium">Supplier</p>
                       <p className="text-sm font-semibold text-gray-900 mt-0.5">{selectedPurchase.supplier?.name || '—'}</p>
+                      {selectedPurchase.supplier?.address && <p className="text-xs text-gray-400">{selectedPurchase.supplier.address}</p>}
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 font-medium">Date</p>

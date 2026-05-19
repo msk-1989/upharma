@@ -602,6 +602,9 @@ export function ReturnsPage() {
                           <p className="text-sm font-medium text-gray-900">
                             {ret.customer?.name || ret.supplier?.name || '-'}
                           </p>
+                          {ret.supplier?.address && (
+                            <p className="text-xs text-gray-500">{ret.supplier.address}</p>
+                          )}
                           <p className="text-xs text-gray-500">
                             {ret.customer?.phone || ret.supplier?.phone || ''}
                           </p>
@@ -937,6 +940,9 @@ export function ReturnsPage() {
                       <p className="text-sm font-medium text-gray-900">
                         {selectedReturn.supplier.name}
                       </p>
+                      {selectedReturn.supplier.address && (
+                        <p className="text-xs text-gray-500">{selectedReturn.supplier.address}</p>
+                      )}
                       <p className="text-xs text-gray-500">
                         {selectedReturn.supplier.phone}
                       </p>

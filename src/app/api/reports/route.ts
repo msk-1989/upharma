@@ -105,7 +105,7 @@ async function getPurchasesReport(dateFilter: Record<string, unknown>) {
     where: { ...(dateFilter && Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}) },
     orderBy: { date: 'desc' },
     include: {
-      supplier: { select: { name: true } },
+      supplier: { select: { name: true, address: true } },
       items: true,
     },
   });

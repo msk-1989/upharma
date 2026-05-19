@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          supplier: { select: { id: true, name: true, phone: true } },
+          supplier: { select: { id: true, name: true, phone: true, address: true } },
           user: { select: { id: true, name: true } },
           items: { select: { id: true, medicineId: true, medicineName: true, quantity: true, receivedQty: true } },
           _count: { select: { items: true } },

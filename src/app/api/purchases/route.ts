@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const purchases = await db.purchase.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { supplier: { select: { name: true } }, user: { select: { name: true } }, items: true },
+      include: { supplier: { select: { name: true, address: true } }, user: { select: { name: true } }, items: true },
     });
     return NextResponse.json({ success: true, data: purchases });
   } catch (error: unknown) {
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         status: 'Completed',
         items: { create: purchaseItemsData },
       },
-      include: { supplier: { select: { name: true } }, items: true },
+      include: { supplier: { select: { name: true, address: true } }, items: true },
     });
 
     return NextResponse.json({ success: true, data: purchase }, { status: 201 });

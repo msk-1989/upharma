@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
           select: { id: true, name: true, phone: true },
         },
         supplier: {
-          select: { id: true, name: true, phone: true },
+          select: { id: true, name: true, phone: true, address: true },
         },
         user: {
           select: { id: true, name: true },

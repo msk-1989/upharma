@@ -21,7 +21,7 @@ export async function POST(
     const po = await db.purchaseOrder.findUnique({
       where: { id },
       include: {
-        supplier: { select: { id: true, name: true } },
+        supplier: { select: { id: true, name: true, address: true } },
         items: {
           include: {
             medicine: { select: { id: true, name: true, unitsPerStrip: true, stripsPerBox: true, saleRate: true, mrp: true, gstPercent: true } },
@@ -191,7 +191,7 @@ export async function POST(
         items: { create: purchaseItemsData },
       },
       include: {
-        supplier: { select: { name: true } },
+        supplier: { select: { name: true, address: true } },
         items: true,
       },
     });

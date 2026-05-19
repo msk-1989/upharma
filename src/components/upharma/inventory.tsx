@@ -97,6 +97,7 @@ interface Medicine {
 interface Supplier {
   id: string;
   name: string;
+  address?: string;
 }
 
 interface Batch {
@@ -280,7 +281,8 @@ export function InventoryPage() {
           b.medicine?.name?.toLowerCase().includes(q) ||
           b.medicine?.genericName?.toLowerCase().includes(q) ||
           b.batchNo?.toLowerCase().includes(q) ||
-          b.supplier?.name?.toLowerCase().includes(q)
+          b.supplier?.name?.toLowerCase().includes(q) ||
+          b.supplier?.address?.toLowerCase().includes(q)
       );
     }
 
@@ -831,7 +833,12 @@ export function InventoryPage() {
                               <div className="text-xs text-muted-foreground">{batch.medicine?.genericName}</div>
                             </TableCell>
                             <TableCell className="font-mono text-sm">{batch.batchNo}</TableCell>
-                            <TableCell className="text-sm">{batch.supplier?.name || '—'}</TableCell>
+                            <TableCell className="text-sm">
+                              <div className="font-medium">{batch.supplier?.name || '—'}</div>
+                              {batch.supplier?.address && (
+                                <div className="text-xs text-muted-foreground mt-0.5">{batch.supplier.address}</div>
+                              )}
+                            </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {formatDate(batch.purchaseDate)}
                             </TableCell>
@@ -1091,7 +1098,10 @@ export function InventoryPage() {
                       <TableRow key={batch.id} className="bg-red-50/50 dark:bg-red-950/20">
                         <TableCell>
                           <div className="font-medium">{batch.medicine?.name}</div>
-                          <div className="text-xs text-muted-foreground">{batch.supplier?.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {batch.supplier?.name}
+                            {batch.supplier?.address && ` — ${batch.supplier.address}`}
+                          </div>
                         </TableCell>
                         <TableCell className="font-mono text-sm">{batch.batchNo}</TableCell>
                         <TableCell>
@@ -1153,7 +1163,10 @@ export function InventoryPage() {
                         <TableRow key={batch.id} className={days <= 30 ? 'bg-red-50/30 dark:bg-red-950/10' : 'bg-orange-50/30 dark:bg-orange-950/10'}>
                           <TableCell>
                             <div className="font-medium">{batch.medicine?.name}</div>
-                            <div className="text-xs text-muted-foreground">{batch.supplier?.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                            {batch.supplier?.name}
+                            {batch.supplier?.address && ` — ${batch.supplier.address}`}
+                          </div>
                           </TableCell>
                           <TableCell className="font-mono text-sm">{batch.batchNo}</TableCell>
                           <TableCell>
@@ -1245,7 +1258,12 @@ export function InventoryPage() {
                         <TableCell className="text-right text-muted-foreground">
                           {batch.medicine?.reorderLevel ?? '—'} {batch.medicine?.baseUnit}
                         </TableCell>
-                        <TableCell className="text-sm">{batch.supplier?.name || '—'}</TableCell>
+                        <TableCell className="text-sm">
+                          <div className="font-medium">{batch.supplier?.name || '—'}</div>
+                          {batch.supplier?.address && (
+                            <div className="text-xs text-muted-foreground mt-0.5">{batch.supplier.address}</div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Button

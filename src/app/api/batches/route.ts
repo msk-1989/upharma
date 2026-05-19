@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
           },
         },
         supplier: {
-          select: { name: true },
+          select: { name: true, address: true },
         },
       },
       orderBy: { expiryDate: 'asc' },

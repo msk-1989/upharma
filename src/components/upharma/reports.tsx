@@ -808,6 +808,9 @@ function PurchasesReport({
                         <p className="text-sm text-gray-900">
                           {purchase.supplier?.name || '-'}
                         </p>
+                        {purchase.supplier?.address && (
+                          <p className="text-xs text-gray-500">{purchase.supplier.address}</p>
+                        )}
                         <p className="text-xs text-gray-500">
                           {purchase.supplier?.phone || ''}
                         </p>
