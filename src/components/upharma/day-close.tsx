@@ -386,12 +386,28 @@ ${dc.notes ? `<div class="notes-section"><strong>Notes: </strong><p>${dc.notes.r
 
 </body></html>`;
 
-    const printWin = window.open('', '_blank', 'width=800,height=600');
-    if (printWin) {
-      printWin.document.write(html);
-      printWin.document.close();
-      printWin.onload = () => { printWin.print(); };
-    }
+    // Use hidden iframe to avoid popup blocker
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+
+    // Cleanup after print dialog closes
+    setTimeout(() => { document.body.removeChild(iframe); }, 10000);
   };
 
   // ── Calculated fields ──
