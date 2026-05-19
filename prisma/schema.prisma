@@ -30,6 +30,10 @@ model User {
   returns         Return[]
   dayCloseOpened  DayClose[] @relation("DayCloseOpener")
   dayCloseClosed  DayClose[] @relation("DayCloseCloser")
+  shiftsOpened    CounterShift[] @relation("ShiftOpener")
+  shiftsClosed    CounterShift[] @relation("ShiftCloser")
+  staffSessions   StaffSession[]
+  cashWithdrawals CashWithdrawal[]
 }
 
 // ==================== SETTINGS ====================
@@ -350,16 +354,19 @@ model Sale {
   loyaltyPointsUsed  Int @default(0)
   loyaltyPointsEarned Int @default(0)
   userId         String?
+  counterShiftId String?  // which counter shift this sale belongs to
+  counterId      String?  // which physical counter
   status         String   @default("Completed") // Completed, Returned, Cancelled
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  customer    Customer?    @relation(fields: [customerId], references: [id])
-  user        User?        @relation(fields: [userId], references: [id])
-  doctor      Doctor?      @relation(fields: [doctorId], references: [id])
-  prescription Prescription? @relation(fields: [prescriptionId], references: [id])
-  items       SaleItem[]
-  payments    Payment[]
+  customer       Customer?      @relation(fields: [customerId], references: [id])
+  user           User?          @relation(fields: [userId], references: [id])
+  doctor         Doctor?        @relation(fields: [doctorId], references: [id])
+  prescription   Prescription?  @relation(fields: [prescriptionId], references: [id])
+  counterShift   CounterShift?  @relation(fields: [counterShiftId], references: [id])
+  items          SaleItem[]
+  payments       Payment[]
 }
 
 model SaleItem {
@@ -441,7 +448,90 @@ model ReturnItem {
   batch    MedicineBatch? @relation(fields: [batchId], references: [id])
 }
 
-// ==================== DAY CLOSING ====================
+// ==================== COUNTERS ====================
+
+model Counter {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "Counter 1", "Main Counter"
+  location    String?  // e.g., "Ground Floor", "Near Entrance"
+  printerName String?
+  status      String   @default("Active") // Active, Inactive
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  counterShifts CounterShift[]
+  staffSessions  StaffSession[]
+}
+
+// ==================== COUNTER SHIFTS ====================
+
+model CounterShift {
+  id               String   @id @default(cuid())
+  counterId        String
+  openedBy         String
+  closedBy         String?
+  openingCash      Float
+  openingNote      String?
+  closingCash      Float?
+  closingNote      String?
+  closingTime      DateTime?
+  expectedCash     Float    @default(0)
+  cashDifference   Float    @default(0)
+  totalSales       Float    @default(0)
+  totalCashSales   Float    @default(0)
+  totalUpiSales    Float    @default(0)
+  totalCardSales   Float    @default(0)
+  totalCreditSales Float    @default(0)
+  totalReturns     Float    @default(0)
+  totalExpenses    Float    @default(0)
+  totalInvoices    Int      @default(0)
+  shiftStatus      String   @default("Open") // Open, Closed
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  counter         Counter     @relation(fields: [counterId], references: [id])
+  openedByUser    User         @relation("ShiftOpener", fields: [openedBy], references: [id])
+  closedByUser    User?        @relation("ShiftCloser", fields: [closedBy], references: [id])
+  sales           Sale[]
+  cashWithdrawals CashWithdrawal[]
+  staffSessions   StaffSession[]
+}
+
+// ==================== STAFF SESSIONS ====================
+
+model StaffSession {
+  id              String    @id @default(cuid())
+  userId          String
+  counterShiftId  String
+  counterId       String
+  loginTime       DateTime  @default(now())
+  logoutTime      DateTime?
+  sessionStatus   String    @default("Active") // Active, Paused, Ended
+  totalInvoices   Int       @default(0)
+  totalSales      Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id])
+  counterShift   CounterShift  @relation(fields: [counterShiftId], references: [id])
+  counter        Counter       @relation(fields: [counterId], references: [id])
+}
+
+// ==================== CASH WITHDRAWALS ====================
+
+model CashWithdrawal {
+  id             String   @id @default(cuid())
+  counterShiftId String
+  amount         Float
+  reason         String
+  withdrawnBy    String
+  createdAt      DateTime @default(now())
+
+  counterShift    CounterShift @relation(fields: [counterShiftId], references: [id])
+  withdrawnByUser User         @relation(fields: [withdrawnBy], references: [id])
+}
+
+// ==================== DAY CLOSING (LEGACY) ====================
 
 model DayClose {
   id               String   @id @default(cuid())

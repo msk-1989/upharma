@@ -13,6 +13,7 @@ import {
   RefreshCw,
   BarChart3,
   CalendarCheck,
+  MonitorCheck,
   Settings,
   Database,
   ChevronLeft,
@@ -46,6 +47,7 @@ const navItems: { key: PageKey; label: string; icon: React.ElementType }[] = [
   { key: 'doctors', label: 'Doctors', icon: Stethoscope },
   { key: 'returns', label: 'Returns', icon: RefreshCw },
   { key: 'reports', label: 'Reports', icon: BarChart3 },
+  { key: 'counter-shift', label: 'Counter Shift', icon: MonitorCheck },
   { key: 'day-close', label: 'Day Closing', icon: CalendarCheck },
   { key: 'settings', label: 'Settings', icon: Settings },
   { key: 'backup', label: 'Backup', icon: Database },
@@ -66,6 +68,7 @@ const roleAccess: Record<string, string[]> = {
   'doctors': ['Admin', 'Manager', 'Cashier'],
   'returns': ['Admin', 'Manager', 'Cashier'],
   'reports': ['Admin', 'Manager'],
+  'counter-shift': ['Admin', 'Manager'],
   'day-close': ['Admin', 'Manager'],
   'settings': ['Admin'],
   'backup': ['Admin'],
@@ -148,7 +151,7 @@ export function Sidebar() {
   }, [role, isMobile, sidebarCollapsed, setSidebarCollapsed]);
 
   // Pages that are allowed even when day is not open
-  const dayExemptPages: PageKey[] = ['day-close', 'settings', 'backup'];
+  const dayExemptPages: PageKey[] = ['day-close', 'counter-shift', 'settings', 'backup'];
 
   const handleNavClick = (key: PageKey) => {
     // Block navigation to transaction pages when day is not open

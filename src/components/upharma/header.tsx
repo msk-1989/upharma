@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, LogOut, Menu, Keyboard, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
+import { ActiveStaffBadge } from '@/components/upharma/active-staff-badge';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ const pageLabels: Record<string, string> = {
   suppliers: 'Suppliers',
   returns: 'Returns',
   reports: 'Reports',
+  'counter-shift': 'Counter Shift',
   settings: 'Settings',
   backup: 'Backup',
 };
@@ -188,6 +190,9 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
           <span className="text-sm font-medium text-gray-700 tabular-nums">{formatTime(currentTime)}</span>
           <span className="text-[11px] text-gray-400 ml-2">{formatDate(currentTime)}</span>
         </div>
+
+        {/* Active Staff Badge */}
+        <ActiveStaffBadge />
 
         {/* Keyboard Shortcuts Button */}
         <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>

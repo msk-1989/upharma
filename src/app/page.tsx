@@ -19,6 +19,7 @@ import { DoctorsPage } from '@/components/upharma/doctors';
 import { ReturnsPage } from '@/components/upharma/returns';
 import { ReportsPage } from '@/components/upharma/reports';
 import { DayClosePage } from '@/components/upharma/day-close';
+import { CounterShiftPage } from '@/components/upharma/counter-shift';
 import { BackupPage } from '@/components/upharma/backup';
 import { LoginScreen } from '@/components/upharma/login';
 import { CommandPalette } from '@/components/upharma/command-palette';
@@ -65,6 +66,8 @@ function PageContent() {
       return <ReportsPage />;
     case 'day-close':
       return <DayClosePage />;
+    case 'counter-shift':
+      return <CounterShiftPage />;
     case 'backup':
       return <BackupPage />;
     default:
@@ -208,7 +211,7 @@ export default function Home() {
     if (user && dayStatus !== 'Open') {
       // Don't redirect if already on day-close, settings, or backup
       const { currentPage } = useAppStore.getState();
-      if (currentPage !== 'day-close' && currentPage !== 'settings' && currentPage !== 'backup') {
+      if (currentPage !== 'day-close' && currentPage !== 'counter-shift' && currentPage !== 'settings' && currentPage !== 'backup') {
         toast({
           title: 'Day Not Open',
           description: dayStatus === null

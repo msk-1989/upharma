@@ -15,6 +15,7 @@ export type PageKey =
   | 'returns'
   | 'reports'
   | 'day-close'
+  | 'counter-shift'
   | 'settings'
   | 'backup';
 
@@ -34,6 +35,11 @@ interface AppState {
   posClearCart: boolean;               // flag to clear POS cart on navigate
   user: { id: string; username: string; name: string; role: string } | null;
   dayStatus: 'Open' | 'Closed' | null; // mandatory day-open tracking
+  // Counter shift state
+  shiftStatus: 'Open' | 'Closed' | null;
+  activeShiftId: string | null;
+  activeCounterId: string | null;
+  activeCounterName: string | null;
   setUser: (user: { id: string; username: string; name: string; role: string } | null) => void;
   setCurrentPage: (page: PageKey) => void;
   toggleSidebar: () => void;
@@ -47,6 +53,9 @@ interface AppState {
   setPosClearCart: (clear: boolean) => void;
   setDayStatus: (status: 'Open' | 'Closed' | null) => void;
   fetchDayStatus: () => Promise<void>;
+  setShiftStatus: (status: 'Open' | 'Closed' | null) => void;
+  setShiftInfo: (info: { shiftId: string | null; counterId: string | null; counterName: string | null }) => void;
+  fetchShiftStatus: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -59,6 +68,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   posClearCart: false,
   user: null,
   dayStatus: null,
+  // Counter shift defaults
+  shiftStatus: null,
+  activeShiftId: null,
+  activeCounterId: null,
+  activeCounterName: null,
   setUser: (user) => set({ user }),
   setCurrentPage: (page) => set({ currentPage: page }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -71,6 +85,35 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPosSelectCustomer: (id) => set({ posSelectCustomer: id }),
   setPosClearCart: (clear) => set({ posClearCart: clear }),
   setDayStatus: (status) => set({ dayStatus: status }),
+  setShiftStatus: (status) => set({ shiftStatus: status }),
+  setShiftInfo: (info) => set({
+    activeShiftId: info.shiftId,
+    activeCounterId: info.counterId,
+    activeCounterName: info.counterName,
+  }),
+  fetchShiftStatus: async () => {
+    try {
+      const res = await fetch('/api/counter-shifts/active');
+      const json = await res.json();
+      if (json.success && json.shift) {
+        set({
+          shiftStatus: json.shift.status,
+          activeShiftId: json.shift.id,
+          activeCounterId: json.shift.counterId,
+          activeCounterName: json.shift.counterName,
+        });
+      } else {
+        set({
+          shiftStatus: null,
+          activeShiftId: null,
+          activeCounterId: null,
+          activeCounterName: null,
+        });
+      }
+    } catch {
+      // Silently fail — don't block app on network error
+    }
+  },
   fetchDayStatus: async () => {
     try {
       const res = await fetch('/api/day-close/status');
