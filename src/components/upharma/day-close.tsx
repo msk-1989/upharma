@@ -92,6 +92,7 @@ type HistoryRecord = DayCloseRecord;
 // ─────────── Helpers ───────────
 
 function formatCurrency(amount: number): string {
+  if (amount == null || isNaN(amount)) return '₹0.00';
   const absAmount = Math.abs(amount);
   const formatted = absAmount.toLocaleString('en-IN', {
     minimumFractionDigits: 2,

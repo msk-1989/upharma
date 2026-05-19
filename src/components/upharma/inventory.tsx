@@ -119,15 +119,21 @@ interface Batch {
 // ─── Helpers ──────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
+  if (amount == null || isNaN(amount)) return '₹0.00';
   return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '—';
+  }
 }
 
 function daysUntilExpiry(expiryDate: string): number {
@@ -768,7 +774,8 @@ export function InventoryPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {/* Desktop Table (md+) */}
+              <div className="overflow-x-auto hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -1013,6 +1020,105 @@ export function InventoryPage() {
                     )}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* Mobile Card Layout (< md) */}
+              <div className="md:hidden divide-y divide-border">
+                {paginatedBatches.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    {searchQuery || supplierFilter !== 'all' || expiryFilter !== 'all'
+                      ? 'No batches match your filters'
+                      : 'No batches found. Add your first batch to get started.'}
+                  </div>
+                ) : (
+                  paginatedBatches.map((batch) => {
+                    const days = daysUntilExpiry(batch.expiryDate);
+                    const expiryBadge = getExpiryBadge(days);
+                    return (
+                      <div key={batch.id} className={`p-3 space-y-2 ${days <= 0 ? 'bg-red-50/50' : days <= 90 ? 'bg-orange-50/30' : ''}`}>
+                        {/* Row 1: Medicine + Actions */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{batch.medicine?.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{batch.medicine?.genericName}</p>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0">
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditDialog(batch)}>
+                                <Pencil className="h-4 w-4 mr-2" /> Edit Batch
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openAdjustDialog(batch)}>
+                                <PlusCircle className="h-4 w-4 mr-2" /> Adjust Stock
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => openDeleteDialog(batch)} className="text-red-600 focus:text-red-600">
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete Batch
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        {/* Row 2: Batch + Supplier */}
+                        <div className="flex items-center gap-3 text-xs text-gray-600">
+                          <span className="font-mono font-medium">{batch.batchNo}</span>
+                          <span className="text-gray-300">|</span>
+                          <span className="truncate">{batch.supplier?.name || '—'}</span>
+                        </div>
+                        {batch.supplier?.address && (
+                          <p className="text-[11px] text-gray-400 truncate">{batch.supplier.address}</p>
+                        )}
+                        {/* Row 3: Expiry + Stock */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">{formatDate(batch.expiryDate)}</span>
+                            <Badge variant={expiryBadge.variant} className={`${expiryBadge.className} text-[10px] px-1.5 py-0 h-5`}>
+                              {expiryBadge.label}
+                            </Badge>
+                          </div>
+                          <span className={`text-sm font-bold ${getStockColor(batch.stockQty, batch.medicine?.reorderLevel)}`}>
+                            {batch.stockQty} {batch.medicine?.baseUnit}
+                          </span>
+                        </div>
+                        {/* Row 4: Prices */}
+                        <div className="flex items-center gap-3 text-xs text-gray-500 pt-1">
+                          <span>Pur: <span className="text-gray-700">{formatCurrency(batch.purchaseRate)}</span></span>
+                          <span>Sale: <span className="text-gray-700">{formatCurrency(batch.saleRate)}</span></span>
+                          <span>MRP: <span className="text-gray-700 font-medium">{formatCurrency(batch.mrp)}</span></span>
+                        </div>
+
+                        {/* Inline Stock Adjustment (mobile) */}
+                        {inlineAdjustBatchId === batch.id && (
+                          <div className="mt-2 p-2 bg-emerald-50 rounded-lg space-y-2 border border-emerald-100">
+                            <p className="text-xs font-semibold text-emerald-800">Adjust Stock: {batch.medicine?.name}</p>
+                            <p className="text-[11px] text-gray-500">Current: {batch.stockQty} {batch.medicine?.baseUnit}</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-1">
+                                <Button type="button" size="sm" variant={adjustType === 'add' ? 'default' : 'outline'} className={adjustType === 'add' ? 'bg-emerald-600 hover:bg-emerald-700 text-white h-7 text-xs px-2' : 'h-7 text-xs px-2'} onClick={() => setAdjustType('add')}>
+                                  <PlusCircle className="h-3 w-3 mr-0.5" /> Add
+                                </Button>
+                                <Button type="button" size="sm" variant={adjustType === 'subtract' ? 'default' : 'outline'} className={adjustType === 'subtract' ? 'bg-red-600 hover:bg-red-700 text-white h-7 text-xs px-2' : 'h-7 text-xs px-2'} onClick={() => setAdjustType('subtract')}>
+                                  <MinusCircle className="h-3 w-3 mr-0.5" /> Remove
+                                </Button>
+                              </div>
+                              <Input type="number" min="1" placeholder="Qty" className="h-7 text-xs w-20" value={adjustQty} onChange={(e) => setAdjustQty(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleStockAdjust(); }} />
+                              <Button size="sm" className={`h-7 text-xs px-2 text-white ${adjustType === 'add' ? 'bg-emerald-600' : 'bg-red-600'}`} onClick={handleStockAdjust} disabled={submitting || !adjustQty || (parseInt(adjustQty) || 0) <= 0}>
+                                {submitting && <Loader2 className="w-3 h-3 mr-0.5 animate-spin" />}
+                                Go
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={cancelInlineAdjust}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
               {/* Pagination */}
