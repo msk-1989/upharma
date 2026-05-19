@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireDayOpen } from '@/lib/day-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Mandatory day-open check before PO conversion
+    const dayCheck = await requireDayOpen();
+    if (!dayCheck.allowed) {
+      return NextResponse.json({ success: false, error: dayCheck.error }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
     const { items, userId } = body;

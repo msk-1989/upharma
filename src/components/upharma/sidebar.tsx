@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore, type PageKey } from '@/stores/app-store';
+import { toast } from '@/hooks/use-toast';
+import { Lock } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -69,11 +71,12 @@ const roleAccess: Record<string, string[]> = {
   'backup': ['Admin'],
 };
 
-function SidebarNavItem({ item, isActive, collapsed, onClick }: {
+function SidebarNavItem({ item, isActive, collapsed, onClick, locked }: {
   item: { key: PageKey; label: string; icon: React.ElementType };
   isActive: boolean;
   collapsed: boolean;
   onClick: () => void;
+  locked?: boolean;
 }) {
   const Icon = item.icon;
 
@@ -85,11 +88,15 @@ function SidebarNavItem({ item, isActive, collapsed, onClick }: {
         collapsed ? 'justify-center' : 'gap-3 px-3',
         isActive
           ? 'bg-emerald-50 text-emerald-600 font-medium'
+          : locked
+          ? 'text-gray-300 cursor-not-allowed'
           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
       )}
+      disabled={locked}
     >
-      <Icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'text-emerald-600')} />
+      <Icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'text-emerald-600', locked && 'text-gray-300')} />
       {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+      {!collapsed && locked && <Lock className="w-3.5 h-3.5 ml-auto text-gray-300" />}
     </button>
   );
 
@@ -110,7 +117,7 @@ function SidebarNavItem({ item, isActive, collapsed, onClick }: {
 }
 
 export function Sidebar() {
-  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen, user, setSidebarCollapsed } = useAppStore();
+  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen, user, setSidebarCollapsed, dayStatus } = useAppStore();
 
   const role = user?.role || 'Cashier';
 
@@ -140,7 +147,19 @@ export function Sidebar() {
     }
   }, [role, isMobile, sidebarCollapsed, setSidebarCollapsed]);
 
+  // Pages that are allowed even when day is not open
+  const dayExemptPages: PageKey[] = ['day-close', 'settings', 'backup'];
+
   const handleNavClick = (key: PageKey) => {
+    // Block navigation to transaction pages when day is not open
+    if (dayStatus !== 'Open' && !dayExemptPages.includes(key)) {
+      toast({
+        title: 'Day Not Open',
+        description: 'Please open the day from Day Closing page before performing any transactions.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setCurrentPage(key);
     // Close mobile drawer after navigation
     setSidebarOpen(false);
@@ -189,15 +208,19 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden">
           <ul className="space-y-0.5 px-2">
-            {visibleNavItems.map((item) => (
-              <SidebarNavItem
-                key={item.key}
-                item={item}
-                isActive={currentPage === item.key}
-                collapsed={effectiveCollapsed}
-                onClick={() => handleNavClick(item.key)}
-              />
-            ))}
+            {visibleNavItems.map((item) => {
+              const isLocked = dayStatus !== 'Open' && !dayExemptPages.includes(item.key);
+              return (
+                <SidebarNavItem
+                  key={item.key}
+                  item={item}
+                  isActive={currentPage === item.key}
+                  collapsed={effectiveCollapsed}
+                  onClick={() => handleNavClick(item.key)}
+                  locked={isLocked}
+                />
+              );
+            })}
           </ul>
         </nav>
 

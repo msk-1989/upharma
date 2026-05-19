@@ -350,12 +350,12 @@ export function DayClosePage() {
       <Card className={`border-2 shadow-sm ${
         isOpen ? 'border-emerald-200 bg-emerald-50/30' : 
         isClosed ? 'border-gray-200 bg-gray-50/30' : 
-        'border-yellow-200 bg-yellow-50/30'
+        'border-yellow-300 bg-yellow-50/50'
       }`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             {noRecord ? (
-              <><CalendarClock className="w-4 h-4 text-yellow-600" /> Day Status</>
+              <><AlertTriangle className="w-4 h-4 text-yellow-600" /> Day Status — Not Opened</>
             ) : isOpen ? (
               <><Unlock className="w-4 h-4 text-emerald-600" /> Day Status — Open</>
             ) : (
@@ -366,11 +366,17 @@ export function DayClosePage() {
         <CardContent>
           {noRecord ? (
             <div className="flex flex-col items-center py-4 text-center">
-              <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mb-3">
-                <CalendarClock className="w-6 h-6 text-yellow-600" />
+              <div className="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center mb-3">
+                <AlertTriangle className="w-7 h-7 text-yellow-600" />
               </div>
-              <p className="text-sm text-gray-600 font-medium">Today&apos;s day has not been opened yet</p>
-              <p className="text-xs text-gray-400 mt-1">Open the day to start recording transactions</p>
+              <p className="text-base text-gray-800 font-semibold">Day has not been opened yet</p>
+              <p className="text-sm text-gray-500 mt-1">You must open the day before performing any sales, purchases, or returns.</p>
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 mt-4"
+                onClick={() => { setShowOpenDialog(true); setOpenError(''); setOpenCashInput(''); }}
+              >
+                <Unlock className="w-4 h-4" /> Open Day Now
+              </Button>
             </div>
           ) : isOpen ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">

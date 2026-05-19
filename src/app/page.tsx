@@ -22,6 +22,7 @@ import { DayClosePage } from '@/components/upharma/day-close';
 import { BackupPage } from '@/components/upharma/backup';
 import { LoginScreen } from '@/components/upharma/login';
 import { CommandPalette } from '@/components/upharma/command-palette';
+import { toast } from '@/hooks/use-toast';
 
 interface AuthUser {
   id: string;
@@ -204,10 +205,17 @@ export default function Home() {
 
   // Redirect to day-close if day not open (after initial load)
   useEffect(() => {
-    if (user && dayStatus === null) {
+    if (user && dayStatus !== 'Open') {
       // Don't redirect if already on day-close, settings, or backup
       const { currentPage } = useAppStore.getState();
       if (currentPage !== 'day-close' && currentPage !== 'settings' && currentPage !== 'backup') {
+        toast({
+          title: 'Day Not Open',
+          description: dayStatus === null
+            ? 'Please open the day to start operations.'
+            : 'Yesterday\'s day was closed. Please open today\'s day.',
+          variant: 'destructive',
+        });
         setCurrentPage('day-close');
       }
     }
