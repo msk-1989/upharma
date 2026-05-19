@@ -142,7 +142,7 @@ function StatCard({ label, value, icon: Icon, color, bg, subLabel }: {
 // ─────────── Main Component ───────────
 
 export function DayClosePage() {
-  const { user } = useAppStore();
+  const { user, fetchDayStatus } = useAppStore();
   const [dayClose, setDayClose] = useState<DayCloseRecord | null>(null);
   const [liveSummary, setLiveSummary] = useState<LiveSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -236,6 +236,7 @@ export function DayClosePage() {
         setOpenCashInput('');
         setActualCash('');
         await fetchData();
+        fetchDayStatus(); // Refresh global day status in store
       } else {
         setOpenError(json.error || 'Failed to open day');
       }
@@ -269,6 +270,7 @@ export function DayClosePage() {
         setCloseNotes('');
         setActualCash('');
         await fetchData();
+        fetchDayStatus(); // Refresh global day status in store
         fetchHistory(1);
       } else {
         setCloseError(json.error || 'Failed to close day');

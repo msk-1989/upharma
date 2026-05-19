@@ -33,6 +33,7 @@ interface AppState {
   posSelectCustomer: string | null;    // customer ID to pre-select in POS
   posClearCart: boolean;               // flag to clear POS cart on navigate
   user: { id: string; username: string; name: string; role: string } | null;
+  dayStatus: 'Open' | 'Closed' | null; // mandatory day-open tracking
   setUser: (user: { id: string; username: string; name: string; role: string } | null) => void;
   setCurrentPage: (page: PageKey) => void;
   toggleSidebar: () => void;
@@ -44,9 +45,11 @@ interface AppState {
   setPosPreSearch: (query: string | null) => void;
   setPosSelectCustomer: (id: string | null) => void;
   setPosClearCart: (clear: boolean) => void;
+  setDayStatus: (status: 'Open' | 'Closed' | null) => void;
+  fetchDayStatus: () => Promise<void>;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   currentPage: 'dashboard',
   sidebarCollapsed: false,
   sidebarOpen: false,
@@ -55,6 +58,7 @@ export const useAppStore = create<AppState>((set) => ({
   posSelectCustomer: null,
   posClearCart: false,
   user: null,
+  dayStatus: null,
   setUser: (user) => set({ user }),
   setCurrentPage: (page) => set({ currentPage: page }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -66,4 +70,16 @@ export const useAppStore = create<AppState>((set) => ({
   setPosPreSearch: (query) => set({ posPreSearch: query }),
   setPosSelectCustomer: (id) => set({ posSelectCustomer: id }),
   setPosClearCart: (clear) => set({ posClearCart: clear }),
+  setDayStatus: (status) => set({ dayStatus: status }),
+  fetchDayStatus: async () => {
+    try {
+      const res = await fetch('/api/day-close/status');
+      const json = await res.json();
+      if (json.success) {
+        set({ dayStatus: json.dayStatus });
+      }
+    } catch {
+      // Silently fail — don't block app on network error
+    }
+  },
 }));

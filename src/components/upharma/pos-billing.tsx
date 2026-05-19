@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAppStore } from '@/stores/app-store';
 import {
   Search,
   Plus,
@@ -935,6 +936,35 @@ export function POSBillingPage() {
   };
 
   // ==================== RENDER ====================
+
+  const { dayStatus, setCurrentPage } = useAppStore();
+
+  // Block POS billing when day is not open
+  if (dayStatus !== 'Open') {
+    return (
+      <div className="p-3 sm:p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+            <Banknote className="w-8 h-8 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Day Not Open</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {dayStatus === null
+                ? 'You must open the day before creating any sales invoices.'
+                : 'The day has been closed. Please open a new day to continue billing.'}
+            </p>
+          </div>
+          <button
+            onClick={() => setCurrentPage('day-close')}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors"
+          >
+            Go to Day Closing
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full">

@@ -188,10 +188,30 @@ export default function Home() {
     setLoading(false);
   }, []);
 
-  const { setUser: setStoreUser } = useAppStore();
+  const { setUser: setStoreUser, fetchDayStatus, dayStatus, setCurrentPage } = useAppStore();
 
   // Register keyboard shortcuts (only when authenticated)
   useKeyboardShortcuts(!!user);
+
+  // Fetch day-open status on login and refresh every 30s
+  useEffect(() => {
+    if (user) {
+      fetchDayStatus();
+      const interval = setInterval(fetchDayStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user, fetchDayStatus]);
+
+  // Redirect to day-close if day not open (after initial load)
+  useEffect(() => {
+    if (user && dayStatus === null) {
+      // Don't redirect if already on day-close, settings, or backup
+      const { currentPage } = useAppStore.getState();
+      if (currentPage !== 'day-close' && currentPage !== 'settings' && currentPage !== 'backup') {
+        setCurrentPage('day-close');
+      }
+    }
+  }, [user, dayStatus, setCurrentPage]);
 
   const handleLogin = (u: AuthUser) => {
     setUser(u);

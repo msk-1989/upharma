@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, LogOut, Menu, Keyboard } from 'lucide-react';
+import { Bell, LogOut, Menu, Keyboard, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import {
   Dialog,
@@ -85,7 +85,7 @@ function ShortcutsDialog() {
 }
 
 export function Header({ user, onLogout }: { user: { name: string; role: string; username: string }; onLogout: () => void }) {
-  const { currentPage, toggleSidebarOpen } = useAppStore();
+  const { currentPage, toggleSidebarOpen, dayStatus, setCurrentPage } = useAppStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
@@ -126,6 +126,37 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
   };
 
   return (
+    <>
+      {/* Day Not Open Banner */}
+      {dayStatus === null && currentPage !== 'day-close' && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2 flex-shrink-0">
+          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <p className="text-xs sm:text-sm text-amber-800 font-medium flex-1">
+            Day has not been opened yet. You must open the day before performing any transactions.
+          </p>
+          <button
+            onClick={() => setCurrentPage('day-close')}
+            className="text-xs font-semibold text-amber-700 hover:text-amber-900 underline whitespace-nowrap flex-shrink-0"
+          >
+            Open Day
+          </button>
+        </div>
+      )}
+      {/* Day Closed Banner */}
+      {dayStatus === 'Closed' && currentPage !== 'day-close' && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-2 flex-shrink-0">
+          <AlertTriangle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          <p className="text-xs sm:text-sm text-blue-800 font-medium flex-1">
+            Day has been closed. Open a new day to continue transactions.
+          </p>
+          <button
+            onClick={() => setCurrentPage('day-close')}
+            className="text-xs font-semibold text-blue-700 hover:text-blue-900 underline whitespace-nowrap flex-shrink-0"
+          >
+            Go to Day Close
+          </button>
+        </div>
+      )}
     <header className="h-16 bg-white border-b border-border flex items-center px-4 sm:px-6 flex-shrink-0">
       {/* Left: Hamburger (mobile) + Logo */}
       <div className="flex items-center gap-3 flex-1 min-w-0 lg:flex-none lg:w-[240px]">
@@ -214,5 +245,6 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
         </div>
       </div>
     </header>
+    </>
   );
 }
