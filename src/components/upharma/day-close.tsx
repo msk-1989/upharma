@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/stores/app-store';
+import { formatDateIST } from '@/lib/dates';
 
 // ─────────── Types ───────────
 
@@ -284,7 +285,113 @@ export function DayClosePage() {
 
   // ── Print ──
   const handlePrint = () => {
-    window.print();
+    const dc = dayClose;
+    if (!dc) return;
+
+    const pharmaName = 'uPharma';
+    const now = new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' });
+    const printDate = formatDateIST(new Date());
+
+    const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Day Close Report - ${printDate}</title>
+<style>
+  @page { size: A4 portrait; margin: 8mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #1a1a1a; padding: 4mm; }
+  .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 12px; }
+  .header h1 { font-size: 18px; margin-bottom: 2px; }
+  .header .sub { font-size: 11px; color: #555; }
+  .section { margin-bottom: 14px; }
+  .section h2 { font-size: 13px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 8px; color: #333; }
+  table { width: 100%; border-collapse: collapse; }
+  table th, table td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #e5e5e5; font-size: 12px; }
+  table th { background: #f5f5f5; font-weight: 600; text-align: left; }
+  table td.right, table th.right { text-align: right; }
+  table td.center, table th.center { text-align: center; }
+  .total-row td { font-weight: 700; background: #f0f0f0; border-top: 2px solid #333; }
+  .diff-ok { color: #16a34a; font-weight: 700; }
+  .diff-bad { color: #dc2626; font-weight: 700; }
+  .diff-over { color: #2563eb; font-weight: 700; }
+  .footer { margin-top: 16px; border-top: 1px solid #ccc; padding-top: 8px; font-size: 10px; color: #888; display: flex; justify-content: space-between; }
+  .signatures { margin-top: 30px; display: flex; justify-content: space-between; }
+  .sig-block { text-align: center; }
+  .sig-line { border-top: 1px solid #333; width: 150px; margin-top: 4px; padding-top: 4px; font-size: 11px; }
+  .notes-section { margin-top: 10px; padding: 8px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 4px; }
+  .notes-section p { font-size: 11px; color: #555; word-break: break-word; }
+</style></head><body>
+
+<div class="header">
+  <h1>${pharmaName}</h1>
+  <div class="sub">Day Closing Report</div>
+</div>
+
+<div class="section">
+  <table>
+    <tr><td><strong>Date</strong></td><td>${formatDateIST(dc.date)}</td>
+        <td><strong>Status</strong></td><td class="center">${dc.status}</td></tr>
+    <tr><td><strong>Opened At</strong></td><td>${formatTime(dc.createdAt)}${dc.openedByUser ? ' by ' + dc.openedByUser.name : ''}</td>
+        <td><strong>Closed At</strong></td><td>${formatTime(dc.updatedAt)}${dc.closedByUser ? ' by ' + dc.closedByUser.name : ''}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Sales Summary</h2>
+  <table>
+    <tr><th>Sales Type</th><th class="right">Amount (₹)</th></tr>
+    <tr><td>Total Sales</td><td class="right">${formatCurrency(dc.totalSales)}</td></tr>
+    <tr><td>&nbsp;&nbsp;Cash Sales</td><td class="right">${formatCurrency(dc.totalCashSales)}</td></tr>
+    <tr><td>&nbsp;&nbsp;Card Sales</td><td class="right">${formatCurrency(dc.totalCardSales)}</td></tr>
+    <tr><td>&nbsp;&nbsp;UPI Sales</td><td class="right">${formatCurrency(dc.totalUpiSales)}</td></tr>
+    <tr><td>&nbsp;&nbsp;Credit Sales</td><td class="right">${formatCurrency(dc.totalCreditSales)}</td></tr>
+    <tr class="total-row"><td>Total Returns</td><td class="right">${formatCurrency(dc.totalReturns)}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Operations Summary</h2>
+  <table>
+    <tr><th>Metric</th><th class="right">Value</th></tr>
+    <tr><td>Total Invoices</td><td class="right">${dc.totalInvoices}</td></tr>
+    <tr><td>Total Return Notes</td><td class="right">${dc.totalReturnNotes}</td></tr>
+    <tr><td>Total Purchases</td><td class="right">${formatCurrency(dc.totalPurchases)}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Cash Reconciliation</h2>
+  <table>
+    <tr><th>Description</th><th class="right">Amount (₹)</th></tr>
+    <tr><td>Opening Cash</td><td class="right">${formatCurrency(dc.openCash)}</td></tr>
+    <tr><td>(+) Cash Sales</td><td class="right">${formatCurrency(dc.totalCashSales)}</td></tr>
+    <tr><td>(-) Cash Returns</td><td class="right">- ${formatCurrency(dc.totalReturns)}</td></tr>
+    <tr class="total-row"><td>Expected Cash in Drawer</td><td class="right">${formatCurrency(dc.expectedCash)}</td></tr>
+    <tr><td>Actual Cash Counted</td><td class="right">${formatCurrency(dc.closeCash)}</td></tr>
+    <tr><td><strong>Difference</strong></td>
+        <td class="right ${dc.difference === 0 ? 'diff-ok' : dc.difference < 0 ? 'diff-bad' : 'diff-over'}">${formatCurrency(dc.difference)}${dc.difference === 0 ? ' ✓' : ''}</td></tr>
+  </table>
+</div>
+
+${dc.notes ? `<div class="notes-section"><strong>Notes: </strong><p>${dc.notes.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p></div>` : ''}
+
+<div class="footer">
+  <span>Generated: ${now}</span>
+  <span>${pharmaName} ERP v1.0</span>
+</div>
+
+<div class="signatures">
+  <div class="sig-block"><div class="sig-line">Opened By</div></div>
+  <div class="sig-block"><div class="sig-line">Closed By</div></div>
+  <div class="sig-block"><div class="sig-line">Authorized Signatory</div></div>
+</div>
+
+</body></html>`;
+
+    const printWin = window.open('', '_blank', 'width=800,height=600');
+    if (printWin) {
+      printWin.document.write(html);
+      printWin.document.close();
+      printWin.onload = () => { printWin.print(); };
+    }
   };
 
   // ── Calculated fields ──
