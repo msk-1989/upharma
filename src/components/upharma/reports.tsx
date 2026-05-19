@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -27,6 +27,7 @@ import {
   ClipboardList,
   ChevronDown,
   ChevronRight,
+  Printer,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -188,6 +189,46 @@ export function ReportsPage() {
   const [dateTo, setDateTo] = useState(getToday());
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
+  const reportContentRef = useRef<HTMLDivElement>(null);
+
+  // Print handler
+  const handlePrint = () => {
+    const content = reportContentRef.current;
+    if (!content) return;
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html><html><head><title>Upharma Report - ${reportType}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #111; font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 12px; }
+        th { background: #f5f5f5; font-weight: 600; }
+        h1, h2, h3 { margin: 8px 0; }
+        .print-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #059669; padding-bottom: 10px; }
+        .print-header h1 { color: #059669; }
+        .summary-cards { display: flex; flex-wrap: wrap; gap: 12px; margin: 15px 0; }
+        .summary-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px 14px; flex: 1; min-width: 140px; }
+        .summary-card .label { font-size: 11px; color: #666; }
+        .summary-card .value { font-size: 18px; font-weight: 700; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-xs { font-size: 11px; }
+        .text-sm { font-size: 13px; }
+        .text-muted { color: #666; }
+        .font-bold { font-weight: 700; }
+        .font-semibold { font-weight: 600; }
+        .mt-2 { margin-top: 8px; }
+        .mb-2 { margin-bottom: 8px; }
+        .hidden-print { display: none; }
+        @media print { body { padding: 10px; } .summary-cards { gap: 8px; } }
+      </style></head><body>
+      <div class="print-header"><h1>Upharma - Pharmacy Management</h1><p class="text-muted">Report: ${reportType.toUpperCase()} | Generated: ${new Date().toLocaleString('en-IN')}</p></div>
+      ${content.innerHTML}
+      <script>window.onload = function() { window.print(); }</script>
+      </body></html>`);
+    printWindow.document.close();
+  };
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -281,7 +322,7 @@ export function ReportsPage() {
             onClick={() => {
               const params = new URLSearchParams();
               params.set('type', reportType);
-              if (reportType !== 'stock') {
+              if (reportType !== 'stock' && reportType !== 'expiry' && reportType !== 'schedule-inventory' && reportType !== 'schedule-sales') {
                 params.set('from', dateFrom);
                 params.set('to', dateTo);
               }
@@ -291,6 +332,16 @@ export function ReportsPage() {
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span className="hidden sm:inline">Export CSV</span>
+          </Button>
+          {/* Print Report */}
+          <Button
+            variant="outline"
+            className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50"
+            onClick={handlePrint}
+            disabled={loading || !reportData}
+          >
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">Print</span>
           </Button>
           <Button
             variant="outline"
@@ -382,6 +433,7 @@ export function ReportsPage() {
       )}
 
       {/* Report Content */}
+      <div ref={reportContentRef}>
       {loading ? (
         <div className="animate-pulse space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -459,6 +511,7 @@ export function ReportsPage() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

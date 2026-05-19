@@ -165,6 +165,203 @@ async function generateStockCsv(): Promise<string> {
   return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
 }
 
+// ==================== GST CSV ====================
+
+async function generateGstCsv(fromStr: string, toStr: string): Promise<string> {
+  const dateFilter: Record<string, unknown> = {};
+  if (fromStr) dateFilter.gte = new Date(fromStr);
+  if (toStr) { const to = new Date(toStr); to.setHours(23, 59, 59, 999); dateFilter.lte = to; }
+
+  const sales = await db.sale.findMany({
+    where: { status: 'Completed', ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}) },
+    include: { items: true },
+  });
+
+  const gstByRate: Record<string, { rate: string; taxable: number; cgst: number; sgst: number; totalGst: number; items: number }> = {};
+  for (const item of sales.flatMap(s => s.items)) {
+    const key = `${item.gstPercent}%`;
+    if (!gstByRate[key]) gstByRate[key] = { rate: `${item.gstPercent}%`, taxable: 0, cgst: 0, sgst: 0, totalGst: 0, items: 0 };
+    gstByRate[key].taxable += Math.max(0, item.total - item.cgst - item.sgst);
+    gstByRate[key].cgst += item.cgst;
+    gstByRate[key].sgst += item.sgst;
+    gstByRate[key].totalGst += item.cgst + item.sgst;
+    gstByRate[key].items += 1;
+  }
+
+  const totalOutput = Object.values(gstByRate);
+  const totalGst = totalOutput.reduce((s, r) => s + r.totalGst, 0);
+
+  const headers = ['GST Rate', 'Taxable Amount', 'CGST', 'SGST', 'Total GST', 'Items'];
+  const rows = totalOutput.map(r => [
+    escapeCsvField(r.rate),
+    escapeCsvField(amt(r.taxable)),
+    escapeCsvField(amt(r.cgst)),
+    escapeCsvField(amt(r.sgst)),
+    escapeCsvField(amt(r.totalGst)),
+    escapeCsvField(r.items),
+  ]);
+
+  return [`GST Report (Date: ${fromStr || 'All'} to ${toStr || 'All'})`, '', headers.join(','), ...rows.map(r => r.join(',')), '', `Total GST Payable,,,,,${amt(totalGst)}`].join('\n');
+}
+
+// ==================== EXPIRY CSV ====================
+
+async function generateExpiryCsv(): Promise<string> {
+  const now = new Date();
+  const batches = await db.medicineBatch.findMany({
+    where: { active: true, stockQty: { gt: 0 } },
+    include: { medicine: { select: { name: true, genericName: true, category: true } } },
+    orderBy: { expiryDate: 'asc' },
+  });
+
+  const items = batches.map(b => {
+    const days = Math.ceil((b.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const status = days <= 0 ? 'EXPIRED' : days <= 90 ? 'CRITICAL' : days <= 180 ? 'WARNING' : 'OK';
+    return {
+      medicineName: b.medicine.name,
+      genericName: b.medicine.genericName || '',
+      category: b.medicine.category || '',
+      batchNo: b.batchNo,
+      expiryDate: formatDate(b.expiryDate),
+      stockQty: b.stockQty,
+      purchaseRate: b.purchaseRate,
+      costValue: Math.round(b.stockQty * b.purchaseRate * 100) / 100,
+      daysToExpiry: days,
+      status,
+    };
+  });
+
+  const headers = ['Medicine', 'Generic', 'Category', 'BatchNo', 'ExpiryDate', 'Stock', 'CostValue', 'DaysLeft', 'Status'];
+  const rows = items.map(i => [
+    escapeCsvField(i.medicineName),
+    escapeCsvField(i.genericName),
+    escapeCsvField(i.category),
+    escapeCsvField(i.batchNo),
+    escapeCsvField(i.expiryDate),
+    escapeCsvField(i.stockQty),
+    escapeCsvField(amt(i.costValue)),
+    escapeCsvField(i.daysToExpiry),
+    escapeCsvField(i.status),
+  ]);
+
+  const expired = items.filter(i => i.status === 'EXPIRED');
+  const critical = items.filter(i => i.status === 'CRITICAL');
+  const totalExpiredValue = expired.reduce((s, i) => s + i.costValue, 0);
+  const totalCriticalValue = critical.reduce((s, i) => s + i.costValue, 0);
+
+  return [`Expiry Report (Generated: ${formatDate(now)})`, '', headers.join(','), ...rows.map(r => r.join(',')), '', `Expired: ${expired.length} items, Value: ${amt(totalExpiredValue)}`, `Critical (90 days): ${critical.length} items, Value: ${amt(totalCriticalValue)}`].join('\n');
+}
+
+// ==================== PROFIT CSV ====================
+
+async function generateProfitCsv(fromStr: string, toStr: string): Promise<string> {
+  const dateFilter: Record<string, unknown> = {};
+  if (fromStr) dateFilter.gte = new Date(fromStr);
+  if (toStr) { const to = new Date(toStr); to.setHours(23, 59, 59, 999); dateFilter.lte = to; }
+
+  const sales = await db.sale.findMany({
+    where: { status: 'Completed', ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}) },
+    include: { items: true },
+  });
+
+  const purchases = await db.purchase.findMany({
+    where: { status: 'Completed', ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}) },
+  });
+
+  const totalRevenue = sales.reduce((s, x) => s + x.grandTotal, 0);
+  const totalGst = sales.reduce((s, x) => s + x.totalGst, 0);
+  const totalDiscount = sales.reduce((s, x) => s + x.totalDiscount, 0);
+  const totalPurchaseCost = purchases.reduce((s, x) => s + x.grandTotal, 0);
+  const netRevenue = totalRevenue - totalGst + totalDiscount;
+  const grossProfit = netRevenue - totalPurchaseCost;
+  const margin = netRevenue > 0 ? (grossProfit / netRevenue * 100) : 0;
+
+  const headers = ['Metric', 'Amount'];
+  const rows = [
+    ['Total Sales', amt(sales.length)],
+    ['Gross Revenue', amt(totalRevenue)],
+    ['Total GST Collected', amt(totalGst)],
+    ['Total Discount', amt(totalDiscount)],
+    ['Net Revenue (excl GST)', amt(Math.round(netRevenue * 100) / 100)],
+    ['Total Purchase Cost', amt(totalPurchaseCost)],
+    ['Gross Profit', amt(Math.round(grossProfit * 100) / 100)],
+    ['Gross Margin %', `${margin.toFixed(2)}%`],
+  ];
+
+  return [`Profit & Loss Report (Date: ${fromStr || 'All'} to ${toStr || 'All'})`, '', headers.join(','), ...rows.map(r => r.map(v => escapeCsvField(v)).join(','))].join('\n');
+}
+
+// ==================== SCHEDULE INVENTORY CSV ====================
+
+async function generateScheduleInventoryCsv(): Promise<string> {
+  const medicines = await db.medicine.findMany({
+    where: { active: true },
+    include: { batches: { where: { active: true }, select: { stockQty: true, purchaseRate: true, saleRate: true, expiryDate: true, batchNo: true } } },
+    orderBy: { name: 'asc' },
+  });
+
+  const scheduleGroups: Record<string, { items: { name: string; totalStock: number; costValue: number; saleValue: number }[]; totalItems: number; totalUnits: number; totalCost: number; totalSale: number }> = {};
+  for (const med of medicines) {
+    const totalStock = med.batches.reduce((s, b) => s + b.stockQty, 0);
+    if (totalStock === 0) continue;
+    const schedule = med.drugSchedule || 'OTC';
+    if (!scheduleGroups[schedule]) scheduleGroups[schedule] = { items: [], totalItems: 0, totalUnits: 0, totalCost: 0, totalSale: 0 };
+    const costValue = med.batches.reduce((s, b) => s + b.stockQty * b.purchaseRate, 0);
+    const saleValue = med.batches.reduce((s, b) => s + b.stockQty * b.saleRate, 0);
+    scheduleGroups[schedule].items.push({ name: med.name, totalStock, costValue: Math.round(costValue * 100) / 100, saleValue: Math.round(saleValue * 100) / 100 });
+    scheduleGroups[schedule].totalItems += 1;
+    scheduleGroups[schedule].totalUnits += totalStock;
+    scheduleGroups[schedule].totalCost += costValue;
+    scheduleGroups[schedule].totalSale += saleValue;
+  }
+
+  const headers = ['Schedule', 'Medicine', 'Stock Qty', 'Cost Value', 'Sale Value'];
+  const rows: string[][] = [];
+  for (const [schedule, group] of Object.entries(scheduleGroups)) {
+    rows.push([escapeCsvField(schedule), '', '', escapeCsvField(amt(Math.round(group.totalCost * 100) / 100)), escapeCsvField(amt(Math.round(group.totalSale * 100) / 100))]);
+    for (const item of group.items) {
+      rows.push(['', escapeCsvField(item.name), escapeCsvField(item.totalStock), escapeCsvField(amt(item.costValue)), escapeCsvField(item.saleValue)]);
+    }
+  }
+
+  return ['Schedule-wise Inventory Report', '', headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+}
+
+// ==================== SCHEDULE SALES CSV ====================
+
+async function generateScheduleSalesCsv(fromStr: string, toStr: string): Promise<string> {
+  const dateFilter: Record<string, unknown> = {};
+  if (fromStr) dateFilter.gte = new Date(fromStr);
+  if (toStr) { const to = new Date(toStr); to.setHours(23, 59, 59, 999); dateFilter.lte = to; }
+
+  const sales = await db.sale.findMany({
+    where: { status: 'Completed', ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}) },
+    include: { items: { include: { medicine: { select: { name: true, drugSchedule: true } } } } },
+    orderBy: { date: 'desc' },
+  });
+
+  const scheduleGroups: Record<string, { items: number; revenue: number }> = {};
+  let totalRevenueAll = 0;
+  for (const sale of sales) {
+    for (const item of sale.items) {
+      const schedule = item.medicine?.drugSchedule || 'OTC';
+      if (!scheduleGroups[schedule]) scheduleGroups[schedule] = { items: 0, revenue: 0 };
+      scheduleGroups[schedule].items += item.quantity;
+      scheduleGroups[schedule].revenue += item.total;
+    }
+    totalRevenueAll += sale.grandTotal;
+  }
+
+  const headers = ['Drug Schedule', 'Items Sold', 'Revenue'];
+  const rows = Object.entries(scheduleGroups).map(([schedule, data]) => [
+    escapeCsvField(schedule),
+    escapeCsvField(data.items),
+    escapeCsvField(amt(Math.round(data.revenue * 100) / 100)),
+  ]);
+
+  return [`Schedule-wise Sales Report (Date: ${fromStr || 'All'} to ${toStr || 'All'})`, '', headers.join(','), ...rows.map(r => r.join(',')), '', `Total Revenue: ${amt(Math.round(totalRevenueAll * 100) / 100)}`].join('\n');
+}
+
 // ==================== GET HANDLER ====================
 
 export async function GET(request: NextRequest) {
@@ -175,38 +372,37 @@ export async function GET(request: NextRequest) {
     let csv: string;
     let filename: string;
 
+    const dateFromStr = searchParams.get('from') || '';
+    const dateToStr = searchParams.get('to') || '';
+
     switch (type) {
       case 'sales': {
-        const fromStr = searchParams.get('from');
-        const toStr = searchParams.get('to');
-        if (!fromStr || !toStr) {
+        if (!dateFromStr || !dateToStr) {
           return NextResponse.json(
             { error: 'Missing required parameters: from and to dates are required' },
             { status: 400 }
           );
         }
-        const from = new Date(fromStr);
-        const to = new Date(toStr);
+        const from = new Date(dateFromStr);
+        const to = new Date(dateToStr);
         to.setHours(23, 59, 59, 999);
         csv = await generateSalesCsv(from, to);
-        filename = `sales_${fromStr}_to_${toStr}.csv`;
+        filename = `sales_${dateFromStr}_to_${dateToStr}.csv`;
         break;
       }
 
       case 'purchases': {
-        const fromStr = searchParams.get('from');
-        const toStr = searchParams.get('to');
-        if (!fromStr || !toStr) {
+        if (!dateFromStr || !dateToStr) {
           return NextResponse.json(
             { error: 'Missing required parameters: from and to dates are required' },
             { status: 400 }
           );
         }
-        const from = new Date(fromStr);
-        const to = new Date(toStr);
+        const from = new Date(dateFromStr);
+        const to = new Date(dateToStr);
         to.setHours(23, 59, 59, 999);
         csv = await generatePurchasesCsv(from, to);
-        filename = `purchases_${fromStr}_to_${toStr}.csv`;
+        filename = `purchases_${dateFromStr}_to_${dateToStr}.csv`;
         break;
       }
 
@@ -228,9 +424,39 @@ export async function GET(request: NextRequest) {
         break;
       }
 
+      case 'gst': {
+        csv = await generateGstCsv(dateFromStr, dateToStr);
+        filename = `gst_report_${dateFromStr || 'all'}_to_${dateToStr || 'all'}.csv`;
+        break;
+      }
+
+      case 'expiry': {
+        csv = await generateExpiryCsv();
+        filename = 'expiry_report.csv';
+        break;
+      }
+
+      case 'profit': {
+        csv = await generateProfitCsv(dateFromStr, dateToStr);
+        filename = `profit_report_${dateFromStr || 'all'}_to_${dateToStr || 'all'}.csv`;
+        break;
+      }
+
+      case 'schedule-inventory': {
+        csv = await generateScheduleInventoryCsv();
+        filename = 'schedule_inventory_report.csv';
+        break;
+      }
+
+      case 'schedule-sales': {
+        csv = await generateScheduleSalesCsv(dateFromStr, dateToStr);
+        filename = `schedule_sales_report_${dateFromStr || 'all'}_to_${dateToStr || 'all'}.csv`;
+        break;
+      }
+
       default:
         return NextResponse.json(
-          { error: 'Invalid type. Supported types: sales, purchases, medicines, customers, stock' },
+          { error: 'Invalid type. Supported types: sales, purchases, medicines, customers, stock, gst, expiry, profit, schedule-inventory, schedule-sales' },
           { status: 400 }
         );
     }
