@@ -192,7 +192,7 @@ export default function Home() {
     setLoading(false);
   }, []);
 
-  const { setUser: setStoreUser, fetchDayStatus, fetchShiftStatus, dayStatus, shiftStatus, setCurrentPage } = useAppStore();
+  const { setUser: setStoreUser, fetchDayStatus, fetchShiftStatus, shiftStatus, setCurrentPage } = useAppStore();
 
   // Register keyboard shortcuts (only when authenticated)
   useKeyboardShortcuts(!!user);
@@ -210,7 +210,7 @@ export default function Home() {
     }
   }, [user, fetchDayStatus, fetchShiftStatus]);
 
-  // Redirect to appropriate page based on role and status (after initial load)
+  // Redirect to counter-shift if shift not open (day auto-opens with shift)
   useEffect(() => {
     if (!user) return;
     const role = user.role;
@@ -221,33 +221,18 @@ export default function Home() {
     // Admin/Owner never gets redirected
     if (isShiftExempt) return;
 
-    // Non-admin: check day status first
-    if (dayStatus !== 'Open') {
-      if (!exemptPages.includes(currentPage)) {
-        toast({
-          title: 'Day Not Open',
-          description: dayStatus === null
-            ? 'Please open the day to start operations.'
-            : 'Yesterday\'s day was closed. Please open today\'s day.',
-          variant: 'destructive',
-        });
-        setCurrentPage('day-close');
-      }
-      return;
-    }
-
-    // Non-admin: check shift status
+    // Non-admin: redirect to counter-shift if shift not open
     if (shiftStatus !== 'Open') {
       if (!exemptPages.includes(currentPage)) {
         toast({
           title: 'Counter Shift Not Open',
-          description: 'Please open a counter shift before performing transactions.',
+          description: 'Please start your day from the Counter Shift page.',
           variant: 'destructive',
         });
         setCurrentPage('counter-shift');
       }
     }
-  }, [user, dayStatus, shiftStatus, setCurrentPage]);
+  }, [user, shiftStatus, setCurrentPage]);
 
   const handleLogin = (u: AuthUser) => {
     setUser(u);

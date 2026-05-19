@@ -120,7 +120,7 @@ function SidebarNavItem({ item, isActive, collapsed, onClick, locked }: {
 }
 
 export function Sidebar() {
-  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen, user, setSidebarCollapsed, dayStatus, shiftStatus } = useAppStore();
+  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen, user, setSidebarCollapsed, shiftStatus } = useAppStore();
 
   const role = user?.role || 'Cashier';
   const isShiftExempt = role === 'Admin' || role === 'Super Admin';
@@ -151,11 +151,11 @@ export function Sidebar() {
     }
   }, [role, isMobile, sidebarCollapsed, setSidebarCollapsed]);
 
-  // Pages that are allowed even when day is not open
-  const dayExemptPages: PageKey[] = ['day-close', 'counter-shift', 'settings', 'backup'];
+  // Pages that are always allowed regardless of shift status
+  const shiftExemptPages: PageKey[] = ['day-close', 'counter-shift', 'settings', 'backup'];
 
   const handleNavClick = (key: PageKey) => {
-    // Pages that are always allowed regardless of day/shift status
+    // Pages that are always allowed regardless of shift status
     const exemptPages: PageKey[] = ['day-close', 'counter-shift', 'settings', 'backup'];
 
     if (exemptPages.includes(key)) {
@@ -171,20 +171,11 @@ export function Sidebar() {
       return;
     }
 
-    // Non-admin: check day open AND shift open
-    if (dayStatus !== 'Open') {
-      toast({
-        title: 'Day Not Open',
-        description: 'Please open the day from Day Closing page first.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    // Non-admin: only check shift status (day auto-opens with shift)
     if (shiftStatus !== 'Open') {
       toast({
         title: 'Counter Shift Not Open',
-        description: 'Please open a counter shift before performing transactions.',
+        description: 'Please start your day from the Counter Shift page.',
         variant: 'destructive',
       });
       return;
@@ -239,7 +230,7 @@ export function Sidebar() {
         <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden">
           <ul className="space-y-0.5 px-2">
             {visibleNavItems.map((item) => {
-              const isLocked = !isShiftExempt && !dayExemptPages.includes(item.key) && (dayStatus !== 'Open' || shiftStatus !== 'Open');
+              const isLocked = !isShiftExempt && !shiftExemptPages.includes(item.key) && shiftStatus !== 'Open';
               return (
                 <SidebarNavItem
                   key={item.key}

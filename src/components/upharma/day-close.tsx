@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  MonitorCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -144,7 +145,7 @@ function StatCard({ label, value, icon: Icon, color, bg, subLabel }: {
 // ─────────── Main Component ───────────
 
 export function DayClosePage() {
-  const { user, fetchDayStatus } = useAppStore();
+  const { user, fetchDayStatus, setCurrentPage } = useAppStore();
   const [dayClose, setDayClose] = useState<DayCloseRecord | null>(null);
   const [liveSummary, setLiveSummary] = useState<LiveSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -519,15 +520,15 @@ ${dc.notes ? `<div class="notes-section"><strong>Notes: </strong><p>${dc.notes.r
           {noRecord ? (
             <div className="flex flex-col items-center py-4 text-center">
               <div className="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center mb-3">
-                <AlertTriangle className="w-7 h-7 text-yellow-600" />
+                <CalendarClock className="w-7 h-7 text-yellow-600" />
               </div>
               <p className="text-base text-gray-800 font-semibold">Day has not been opened yet</p>
-              <p className="text-sm text-gray-500 mt-1">You must open the day before performing any sales, purchases, or returns.</p>
+              <p className="text-sm text-gray-500 mt-1">The day will open automatically when you start a counter shift.</p>
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 mt-4"
-                onClick={() => { setShowOpenDialog(true); setOpenError(''); setOpenCashInput(''); }}
+                onClick={() => setCurrentPage('counter-shift')}
               >
-                <Unlock className="w-4 h-4" /> Open Day Now
+                <Unlock className="w-4 h-4" /> Go to Counter Shift
               </Button>
             </div>
           ) : isOpen ? (
@@ -815,9 +816,9 @@ ${dc.notes ? `<div class="notes-section"><strong>Notes: </strong><p>${dc.notes.r
         {noRecord && (
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-            onClick={() => { setShowOpenDialog(true); setOpenError(''); setOpenCashInput(''); }}
+            onClick={() => setCurrentPage('counter-shift')}
           >
-            <Unlock className="w-4 h-4" /> Open Day
+            <MonitorCheck className="w-4 h-4" /> Start from Counter Shift
           </Button>
         )}
         {isOpen && (

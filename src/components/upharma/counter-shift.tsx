@@ -180,7 +180,7 @@ function StatCard({ label, value, icon: Icon, color, bg, subLabel }: {
 // ─────────── Main Component ───────────
 
 export function CounterShiftPage() {
-  const { user, fetchShiftStatus, setShiftStatus, setShiftInfo } = useAppStore();
+  const { user, fetchShiftStatus, setShiftStatus, setShiftInfo, dayStatus, fetchDayStatus } = useAppStore();
   const { toast } = useToast();
 
   // Shift data
@@ -340,7 +340,8 @@ export function CounterShiftPage() {
         setOpenNote('');
         await fetchData();
         fetchShiftStatus();
-        toast({ title: 'Shift Opened', description: 'Counter shift has been opened successfully.' });
+        fetchDayStatus(); // Refresh day status (auto-opened by backend)
+        toast({ title: dayStatus !== 'Open' ? 'Day Started!' : 'Shift Opened', description: dayStatus !== 'Open' ? 'Day has been opened and counter shift is now active. You can start billing.' : 'Counter shift has been opened successfully.' });
       } else {
         setOpenError(json.error || 'Failed to open shift');
       }
@@ -682,12 +683,78 @@ ${isClosed && shift.differenceReason ? `<div class="notes-section"><strong>Diffe
   // ── Open dialog triggers ──
   const openOpenDialog = () => {
     setOpenError('');
-    setOpenCounterId('');
+    setOpenCounterId(user?.defaultCounterId || '');
     setOpenCashInput('');
     setOpenNote('');
     fetchCounters();
     setShowOpenDialog(true);
   };
+
+  // ── Inline Start Your Day (no dialog) ──
+  const [inlineCash, setInlineCash] = useState('');
+  const [inlineCounter, setInlineCounter] = useState('');
+  const [inlineNote, setInlineNote] = useState('');
+  const [inlineError, setInlineError] = useState('');
+  const [inlineLoading, setInlineLoading] = useState(false);
+
+  // Pre-fill counter on mount if user has a default
+  useEffect(() => {
+    if (noShift && user?.defaultCounterId) {
+      setInlineCounter(user.defaultCounterId);
+    }
+  }, [noShift, user?.defaultCounterId]);
+
+  // Fetch counters for inline form
+  useEffect(() => {
+    if (noShift && counters.length === 0) {
+      fetchCounters();
+    }
+  }, [noShift, counters.length, fetchCounters]);
+
+  const handleInlineStart = async () => {
+    setInlineError('');
+    if (!inlineCounter) {
+      setInlineError('Please select a counter');
+      return;
+    }
+    const cash = parseFloat(inlineCash);
+    if (isNaN(cash) || cash < 0) {
+      setInlineError('Please enter a valid opening cash amount');
+      return;
+    }
+
+    setInlineLoading(true);
+    try {
+      const res = await fetch('/api/counter-shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          counterId: inlineCounter,
+          openingCash: cash,
+          openingNote: inlineNote || null,
+          userId: user?.id,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setInlineCash('');
+        setInlineNote('');
+        setInlineError('');
+        await fetchData();
+        fetchShiftStatus();
+        fetchDayStatus();
+        toast({ title: 'Day Started!', description: 'Day has been opened and counter shift is now active. Start billing now.' });
+      } else {
+        setInlineError(json.error || 'Failed to start. Please try again.');
+      }
+    } catch {
+      setInlineError('Network error. Please try again.');
+    } finally {
+      setInlineLoading(false);
+    }
+  };
+
+  const dayNotOpen = dayStatus !== 'Open';
 
   const openCloseDialog = () => {
     setCloseError('');
@@ -733,7 +800,7 @@ ${isClosed && shift.differenceReason ? `<div class="notes-section"><strong>Diffe
             }`}
           >
             {noShift ? (
-              <><CalendarClock className="w-3 h-3 mr-1.5 inline" /> No Active Shift</>
+              <><CalendarClock className="w-3 h-3 mr-1.5 inline" />{dayNotOpen ? 'Day Not Started' : 'No Active Shift'}</>
             ) : isOpen ? (
               <><Unlock className="w-3 h-3 mr-1.5 inline" /> Shift Open</>
             ) : (
@@ -752,12 +819,17 @@ ${isClosed && shift.differenceReason ? `<div class="notes-section"><strong>Diffe
       <Card className={`border-2 shadow-sm ${
         isOpen ? 'border-emerald-200 bg-emerald-50/30' :
         isClosed ? 'border-gray-200 bg-gray-50/30' :
+        dayNotOpen ? 'border-emerald-300 bg-emerald-50/50' :
         'border-yellow-300 bg-yellow-50/50'
       }`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             {noShift ? (
-              <><AlertTriangle className="w-4 h-4 text-yellow-600" /> Counter Status — No Active Shift</>
+              dayNotOpen ? (
+                <><CalendarClock className="w-4 h-4 text-emerald-600" /> Start Your Day</>
+              ) : (
+                <><AlertTriangle className="w-4 h-4 text-yellow-600" /> Counter Status — No Active Shift</>
+              )
             ) : isOpen ? (
               <><Unlock className="w-4 h-4 text-emerald-600" /> Counter Status — Shift Open</>
             ) : (
@@ -767,21 +839,93 @@ ${isClosed && shift.differenceReason ? `<div class="notes-section"><strong>Diffe
         </CardHeader>
         <CardContent>
           {noShift ? (
-            <div className="flex flex-col items-center py-4 text-center">
-              <div className="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center mb-3">
-                <MonitorCheck className="w-7 h-7 text-yellow-600" />
+            dayNotOpen ? (
+              /* ── UNIFIED: Start Your Day (inline form) ── */
+              <div className="py-2">
+                <div className="flex flex-col items-center text-center mb-5">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                    <CalendarClock className="w-7 h-7 text-emerald-600" />
+                  </div>
+                  <p className="text-lg text-gray-900 font-bold">Start Your Day</p>
+                  <p className="text-sm text-gray-500 mt-1">Select your counter and enter opening cash to begin operations.</p>
+                </div>
+                {isAdminOrManager && (
+                  <div className="max-w-md mx-auto space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Select Counter</Label>
+                      <Select value={inlineCounter} onValueChange={setInlineCounter}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choose a counter..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {counters.filter(c => c.status === 'Active').map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}{c.location ? ` — ${c.location}` : ''}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Opening Cash (₹)</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 5000"
+                        value={inlineCash}
+                        onChange={(e) => setInlineCash(e.target.value)}
+                        className="text-lg"
+                        min="0"
+                        step="0.01"
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleInlineStart(); }}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Note (optional)</Label>
+                      <Textarea
+                        placeholder="Any notes for this shift..."
+                        value={inlineNote}
+                        onChange={(e) => setInlineNote(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                    {inlineError && (
+                      <p className="text-sm text-red-600 font-medium">{inlineError}</p>
+                    )}
+                    <Button
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-11 text-base font-semibold"
+                      onClick={handleInlineStart}
+                      disabled={inlineLoading}
+                    >
+                      {inlineLoading ? (
+                        <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Starting...</>
+                      ) : (
+                        <><Unlock className="w-5 h-5" /> Start Your Day</>
+                      )}
+                    </Button>
+                    <p className="text-xs text-gray-400 text-center">This will open the day and start your counter shift in one step.</p>
+                  </div>
+                )}
+                {!isAdminOrManager && (
+                  <p className="text-sm text-gray-500">Please ask your Admin or Manager to start the day.</p>
+                )}
               </div>
-              <p className="text-base text-gray-800 font-semibold">No counter shift is active</p>
-              <p className="text-sm text-gray-500 mt-1">Open a counter shift to begin billing and tracking sales.</p>
-              {isAdminOrManager && (
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 mt-4"
-                  onClick={openOpenDialog}
-                >
-                  <Unlock className="w-4 h-4" /> Open Counter Shift
-                </Button>
-              )}
-            </div>
+            ) : (
+              /* Day is open but no shift — show simple Open Counter Shift button */
+              <div className="flex flex-col items-center py-4 text-center">
+                <div className="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center mb-3">
+                  <MonitorCheck className="w-7 h-7 text-yellow-600" />
+                </div>
+                <p className="text-base text-gray-800 font-semibold">No counter shift is active</p>
+                <p className="text-sm text-gray-500 mt-1">Open a counter shift to begin billing and tracking sales.</p>
+                {isAdminOrManager && (
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 mt-4"
+                    onClick={openOpenDialog}
+                  >
+                    <Unlock className="w-4 h-4" /> Open Counter Shift
+                  </Button>
+                )}
+              </div>
+            )
           ) : isOpen ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex-1">

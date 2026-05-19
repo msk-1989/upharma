@@ -937,18 +937,13 @@ export function POSBillingPage() {
 
   // ==================== RENDER ====================
 
-  const { dayStatus, shiftStatus, user, setCurrentPage } = useAppStore();
+  const { shiftStatus, user, setCurrentPage } = useAppStore();
 
   const isShiftExempt = user?.role === 'Admin' || user?.role === 'Super Admin';
   const needsShift = !isShiftExempt && shiftStatus !== 'Open';
 
-  // Block POS billing when day not open (legacy check) or shift not open (non-admin)
-  if (dayStatus !== 'Open' || needsShift) {
-    // Determine what to show based on the blocker
-    const blockReason = dayStatus !== 'Open'
-      ? { title: 'Day Not Open', desc: dayStatus === null ? 'Please open the day to start operations.' : 'The day has been closed. Please open a new day.', page: 'day-close' as const, btn: 'Go to Day Closing' }
-      : { title: 'Counter Shift Not Open', desc: 'Please open a counter shift before creating invoices.', page: 'counter-shift' as const, btn: 'Open Counter Shift' };
-
+  // Block POS billing when shift not open (day auto-opens with shift)
+  if (needsShift) {
     return (
       <div className="p-3 sm:p-6 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
@@ -956,14 +951,14 @@ export function POSBillingPage() {
             <Banknote className="w-8 h-8 text-amber-600" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{blockReason.title}</h2>
-            <p className="text-sm text-gray-500 mt-1">{blockReason.desc}</p>
+            <h2 className="text-xl font-bold text-gray-900">Counter Shift Not Open</h2>
+            <p className="text-sm text-gray-500 mt-1">Please start your day from the Counter Shift page to begin billing.</p>
           </div>
           <button
-            onClick={() => setCurrentPage(blockReason.page)}
+            onClick={() => setCurrentPage('counter-shift')}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors"
           >
-            {blockReason.btn}
+            Start Your Day
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireDayOpen } from '@/lib/day-guard';
+import { getTodayIST, getTomorrowIST } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,10 +106,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
     }
 
-    // Verify the day is open before allowing a shift to be opened
-    const dayCheck = await requireDayOpen();
-    if (!dayCheck.allowed) {
-      return NextResponse.json({ success: false, error: 'Cannot open a counter shift — Day has not been opened yet. Please open the day first from Day Closing page.' }, { status: 403 });
+    // Auto-open the day if not already open (unified flow: one step starts everything)
+    try {
+      const today = getTodayIST();
+      const tomorrow = getTomorrowIST();
+      const existingDay = await db.dayClose.findFirst({
+        where: { date: { gte: today, lt: tomorrow }, status: 'Open' },
+        select: { id: true },
+      });
+      if (!existingDay) {
+        await db.dayClose.create({
+          data: {
+            date: new Date(),
+            openCash: Math.round(Number(openingCash) * 100) / 100,
+            status: 'Open',
+            openedBy: userId,
+          },
+        });
+        // Create audit log for auto day open
+        await db.auditLog.create({
+          data: {
+            userId,
+            action: 'DAY_OPEN',
+            module: 'counter-shifts',
+            details: 'Day auto-opened when counter shift was started',
+          },
+        });
+      }
+    } catch (dayErr) {
+      // Log but don't block — graceful degradation
+      console.error('Auto day-open check failed:', dayErr);
     }
 
     // Verify counter exists and is active
@@ -169,7 +195,7 @@ export async function POST(request: NextRequest) {
         userId,
         action: 'SHIFT_OPEN',
         module: 'counter-shifts',
-        details: `Shift opened for ${counter.name} with ₹${Number(openingCash).toLocaleString('en-IN')} cash`,
+        details: `Shift opened for ${counter.name} with Rs.${Number(openingCash).toLocaleString('en-IN')} cash`,
       },
     });
 
