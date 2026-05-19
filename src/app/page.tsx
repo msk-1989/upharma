@@ -192,26 +192,38 @@ export default function Home() {
     setLoading(false);
   }, []);
 
-  const { setUser: setStoreUser, fetchDayStatus, dayStatus, setCurrentPage } = useAppStore();
+  const { setUser: setStoreUser, fetchDayStatus, fetchShiftStatus, dayStatus, shiftStatus, setCurrentPage } = useAppStore();
 
   // Register keyboard shortcuts (only when authenticated)
   useKeyboardShortcuts(!!user);
 
-  // Fetch day-open status on login and refresh every 30s
+  // Fetch day-open status and shift status on login and refresh every 30s
   useEffect(() => {
     if (user) {
       fetchDayStatus();
-      const interval = setInterval(fetchDayStatus, 30000);
+      fetchShiftStatus();
+      const interval = setInterval(() => {
+        fetchDayStatus();
+        fetchShiftStatus();
+      }, 30000);
       return () => clearInterval(interval);
     }
-  }, [user, fetchDayStatus]);
+  }, [user, fetchDayStatus, fetchShiftStatus]);
 
-  // Redirect to day-close if day not open (after initial load)
+  // Redirect to appropriate page based on role and status (after initial load)
   useEffect(() => {
-    if (user && dayStatus !== 'Open') {
-      // Don't redirect if already on day-close, settings, or backup
-      const { currentPage } = useAppStore.getState();
-      if (currentPage !== 'day-close' && currentPage !== 'counter-shift' && currentPage !== 'settings' && currentPage !== 'backup') {
+    if (!user) return;
+    const role = user.role;
+    const isShiftExempt = role === 'Admin' || role === 'Super Admin';
+    const { currentPage } = useAppStore.getState();
+    const exemptPages: PageKey[] = ['day-close', 'counter-shift', 'settings', 'backup'];
+
+    // Admin/Owner never gets redirected
+    if (isShiftExempt) return;
+
+    // Non-admin: check day status first
+    if (dayStatus !== 'Open') {
+      if (!exemptPages.includes(currentPage)) {
         toast({
           title: 'Day Not Open',
           description: dayStatus === null
@@ -221,8 +233,21 @@ export default function Home() {
         });
         setCurrentPage('day-close');
       }
+      return;
     }
-  }, [user, dayStatus, setCurrentPage]);
+
+    // Non-admin: check shift status
+    if (shiftStatus !== 'Open') {
+      if (!exemptPages.includes(currentPage)) {
+        toast({
+          title: 'Counter Shift Not Open',
+          description: 'Please open a counter shift before performing transactions.',
+          variant: 'destructive',
+        });
+        setCurrentPage('counter-shift');
+      }
+    }
+  }, [user, dayStatus, shiftStatus, setCurrentPage]);
 
   const handleLogin = (u: AuthUser) => {
     setUser(u);

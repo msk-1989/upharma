@@ -1,11 +1,21 @@
 import { db } from '@/lib/db';
 
+/** Roles that bypass shift requirement entirely */
+const SHIFT_EXEMPT_ROLES = ['Admin', 'Super Admin'];
+
 /**
  * Check if there is an active counter shift. Returns the CounterShift record if found, null otherwise.
  * Used by API routes to enforce mandatory active shift before transactions.
- * Graceful degradation: on DB error, returns allowed: true so the app doesn't break.
+ *
+ * ROLE-BASED RULES:
+ * - Admin / Super Admin → ALWAYS allowed (no shift required)
+ * - Cashier / Manager → MUST have an active counter shift
+ * - Pharmacist → MUST have an active shift to bill (joins existing counter)
+ *
+ * Pass `userRole` to enable role-based bypass. If not provided, treats as non-exempt.
+ * Graceful degradation: on DB error, returns allowed: true.
  */
-export async function requireActiveShift(): Promise<{
+export async function requireActiveShift(userRole?: string): Promise<{
   allowed: boolean;
   error?: string;
   shift?: {
@@ -13,7 +23,13 @@ export async function requireActiveShift(): Promise<{
     counterId: string;
     shiftStatus: string;
   };
+  isExempt?: boolean;
 }> {
+  // Admin/Owner bypass shift requirement
+  if (userRole && SHIFT_EXEMPT_ROLES.includes(userRole)) {
+    return { allowed: true, isExempt: true };
+  }
+
   try {
     const activeShift = await db.counterShift.findFirst({
       where: {
@@ -29,7 +45,7 @@ export async function requireActiveShift(): Promise<{
     if (!activeShift) {
       return {
         allowed: false,
-        error: 'No active counter shift found. Please open a shift from the Counter Shift page before performing any transactions.',
+        error: 'No active counter shift found. Please open a counter shift before performing any transactions.',
       };
     }
 

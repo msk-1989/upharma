@@ -937,10 +937,18 @@ export function POSBillingPage() {
 
   // ==================== RENDER ====================
 
-  const { dayStatus, setCurrentPage } = useAppStore();
+  const { dayStatus, shiftStatus, user, setCurrentPage } = useAppStore();
 
-  // Block POS billing when day is not open
-  if (dayStatus !== 'Open') {
+  const isShiftExempt = user?.role === 'Admin' || user?.role === 'Super Admin';
+  const needsShift = !isShiftExempt && shiftStatus !== 'Open';
+
+  // Block POS billing when day not open (legacy check) or shift not open (non-admin)
+  if (dayStatus !== 'Open' || needsShift) {
+    // Determine what to show based on the blocker
+    const blockReason = dayStatus !== 'Open'
+      ? { title: 'Day Not Open', desc: dayStatus === null ? 'Please open the day to start operations.' : 'The day has been closed. Please open a new day.', page: 'day-close' as const, btn: 'Go to Day Closing' }
+      : { title: 'Counter Shift Not Open', desc: 'Please open a counter shift before creating invoices.', page: 'counter-shift' as const, btn: 'Open Counter Shift' };
+
     return (
       <div className="p-3 sm:p-6 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
@@ -948,18 +956,14 @@ export function POSBillingPage() {
             <Banknote className="w-8 h-8 text-amber-600" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Day Not Open</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {dayStatus === null
-                ? 'You must open the day before creating any sales invoices.'
-                : 'The day has been closed. Please open a new day to continue billing.'}
-            </p>
+            <h2 className="text-xl font-bold text-gray-900">{blockReason.title}</h2>
+            <p className="text-sm text-gray-500 mt-1">{blockReason.desc}</p>
           </div>
           <button
-            onClick={() => setCurrentPage('day-close')}
+            onClick={() => setCurrentPage(blockReason.page)}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors"
           >
-            Go to Day Closing
+            {blockReason.btn}
           </button>
         </div>
       </div>

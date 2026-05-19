@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireDayOpen } from '@/lib/day-guard';
+import { requireActiveShift } from '@/lib/shift-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +19,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Mandatory day-open check before any purchase transaction
-    const dayCheck = await requireDayOpen();
-    if (!dayCheck.allowed) {
-      return NextResponse.json({ success: false, error: dayCheck.error }, { status: 403 });
+    // Mandatory active-shift check before any purchase transaction
+    const shiftCheck = await requireActiveShift();
+    if (!shiftCheck.allowed) {
+      return NextResponse.json({ success: false, error: shiftCheck.error }, { status: 403 });
     }
 
     const body = await request.json();

@@ -68,7 +68,7 @@ const roleAccess: Record<string, string[]> = {
   'doctors': ['Admin', 'Manager', 'Cashier'],
   'returns': ['Admin', 'Manager', 'Cashier'],
   'reports': ['Admin', 'Manager'],
-  'counter-shift': ['Admin', 'Manager'],
+  'counter-shift': ['Admin', 'Manager', 'Cashier'],
   'day-close': ['Admin', 'Manager'],
   'settings': ['Admin'],
   'backup': ['Admin'],
@@ -120,9 +120,10 @@ function SidebarNavItem({ item, isActive, collapsed, onClick, locked }: {
 }
 
 export function Sidebar() {
-  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen, user, setSidebarCollapsed, dayStatus } = useAppStore();
+  const { currentPage, setCurrentPage, sidebarCollapsed, sidebarOpen, toggleSidebar, setSidebarOpen, user, setSidebarCollapsed, dayStatus, shiftStatus } = useAppStore();
 
   const role = user?.role || 'Cashier';
+  const isShiftExempt = role === 'Admin' || role === 'Super Admin';
 
   // Filter nav items based on role
   const visibleNavItems = navItems.filter(item =>
@@ -154,15 +155,41 @@ export function Sidebar() {
   const dayExemptPages: PageKey[] = ['day-close', 'counter-shift', 'settings', 'backup'];
 
   const handleNavClick = (key: PageKey) => {
-    // Block navigation to transaction pages when day is not open
-    if (dayStatus !== 'Open' && !dayExemptPages.includes(key)) {
+    // Pages that are always allowed regardless of day/shift status
+    const exemptPages: PageKey[] = ['day-close', 'counter-shift', 'settings', 'backup'];
+
+    if (exemptPages.includes(key)) {
+      setCurrentPage(key);
+      setSidebarOpen(false);
+      return;
+    }
+
+    // Admin/Owner is never blocked
+    if (isShiftExempt) {
+      setCurrentPage(key);
+      setSidebarOpen(false);
+      return;
+    }
+
+    // Non-admin: check day open AND shift open
+    if (dayStatus !== 'Open') {
       toast({
         title: 'Day Not Open',
-        description: 'Please open the day from Day Closing page before performing any transactions.',
+        description: 'Please open the day from Day Closing page first.',
         variant: 'destructive',
       });
       return;
     }
+
+    if (shiftStatus !== 'Open') {
+      toast({
+        title: 'Counter Shift Not Open',
+        description: 'Please open a counter shift before performing transactions.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setCurrentPage(key);
     // Close mobile drawer after navigation
     setSidebarOpen(false);
@@ -212,7 +239,7 @@ export function Sidebar() {
         <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden">
           <ul className="space-y-0.5 px-2">
             {visibleNavItems.map((item) => {
-              const isLocked = dayStatus !== 'Open' && !dayExemptPages.includes(item.key);
+              const isLocked = !isShiftExempt && !exemptPages.includes(item.key) && (dayStatus !== 'Open' || shiftStatus !== 'Open');
               return (
                 <SidebarNavItem
                   key={item.key}

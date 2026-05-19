@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireDayOpen } from '@/lib/day-guard';
+import { requireActiveShift } from '@/lib/shift-guard';
+
+/** Cache role lookups during request (avoids repeated DB calls) */
+const roleCache = new Map<string, string>();
+async function getUserRole(userId: string): Promise<string | undefined> {
+  if (roleCache.has(userId)) return roleCache.get(userId);
+  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (user) roleCache.set(userId, user.role);
+  return user?.role;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -23,14 +32,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Mandatory Day-Open Check
-    const dayCheck = await requireDayOpen();
-    if (!dayCheck.allowed) {
-      return NextResponse.json({ success: false, error: dayCheck.error }, { status: 403 });
-    }
-
     const body = await request.json();
     const { customerId, customerName, doctorName, paymentMode, items, userId, loyaltyPointsUsed } = body;
+
+    // Shift check: Admin/Owner bypasses, others need active shift
+    const shiftCheck = await requireActiveShift(userId ? await getUserRole(userId) : undefined);
+    if (!shiftCheck.allowed) {
+      return NextResponse.json({ success: false, error: shiftCheck.error }, { status: 403 });
+    }
 
     let subtotal = 0;
     let totalGst = 0;
@@ -145,6 +154,8 @@ export async function POST(request: NextRequest) {
         balanceDue: 0,
         paymentMode: paymentMode || 'Cash',
         userId: userId || null,
+        counterShiftId: shiftCheck.shift?.id || null,
+        counterId: shiftCheck.shift?.counterId || null,
         status: 'Completed',
         loyaltyPointsUsed: pointsToUse,
         loyaltyPointsEarned,
