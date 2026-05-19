@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAppStore } from '@/stores/app-store';
 import { Truck, Plus, Eye, Search, Filter, X, CalendarDays, IndianRupee, Package, Clock, Users, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,7 @@ function StatusBadge({ status }: { status: string }) {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function PurchasesPage() {
+  const { user } = useAppStore();
   // Data
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -228,6 +230,7 @@ export function PurchasesPage() {
     try {
       const body = {
         supplierId: createSupplierId,
+        userId: user?.id,
         items: createItems.map(i => ({
           medicineId: i.medicineId,
           quantity: i.quantity,

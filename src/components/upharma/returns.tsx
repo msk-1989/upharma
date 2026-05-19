@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAppStore } from '@/stores/app-store';
 import {
   RotateCcw,
   Plus,
@@ -203,6 +204,7 @@ function MedicineSearchInput({
 }
 
 export function ReturnsPage() {
+  const { user } = useAppStore();
   const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [stats, setStats] = useState<ReturnStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -299,6 +301,7 @@ export function ReturnsPage() {
       const body: any = {
         type: createType,
         referenceId,
+        userId: user?.id,
         items: returnItems.map((item) => ({
           medicineId: item.medicineId,
           batchId: item.batchId,

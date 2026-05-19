@@ -188,6 +188,8 @@ function PaymentIcon({ mode }: { mode: string }) {
 // ==================== MAIN COMPONENT ====================
 
 export function POSBillingPage() {
+  const { user } = useAppStore();
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<MedicineSearchResult[]>([]);
@@ -837,6 +839,7 @@ export function POSBillingPage() {
         paymentMode,
         items: saleItems,
         loyaltyPointsUsed: pointsToUse,
+        userId: user?.id,
       };
 
       const res = await fetch('/api/sales', {
@@ -937,7 +940,7 @@ export function POSBillingPage() {
 
   // ==================== RENDER ====================
 
-  const { shiftStatus, user, setCurrentPage } = useAppStore();
+  const { shiftStatus, setCurrentPage } = useAppStore();
 
   const isShiftExempt = user?.role === 'Admin' || user?.role === 'Super Admin';
   const needsShift = !isShiftExempt && shiftStatus !== 'Open';
