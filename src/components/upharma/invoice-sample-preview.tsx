@@ -38,10 +38,7 @@ function SampleInvoiceBody({ s, invoicePrefix, terms, today, sampleInvNo }: {
   sampleInvNo: string;
 }) {
   const subtotal = SAMPLE_ITEMS.reduce((sum, i) => sum + i.amount, 0);
-  const gst = Math.round(subtotal * 0.12 * 100) / 100;
-  const cgst = gst / 2;
-  const sgst = gst / 2;
-  const grandTotal = subtotal + gst;
+  const grandTotal = subtotal;
 
   const regLine = [s.drugLicense ? `DL No: ${s.drugLicense}` : '', s.fssaiNo ? `FSSAI: ${s.fssaiNo}` : ''].filter(Boolean).join(' | ');
 
@@ -76,9 +73,9 @@ function SampleInvoiceBody({ s, invoicePrefix, terms, today, sampleInvNo }: {
           {s.phone ? ` | Ph: ${s.phone}` : ''}
         </p>
         <p style={{ fontSize: '8px', color: '#777', margin: '1px 0 0 0' }}>
-          {s.gstNumber ? `GSTIN: ${s.gstNumber}` : 'GSTIN: XX...'}
-          {s.drugLicense ? ` | DL No: ${s.drugLicense}` : ''}
-          {s.fssaiNo ? ` | FSSAI: ${s.fssaiNo}` : ''}
+          {s.drugLicense ? `DL No: ${s.drugLicense}` : ''}
+          {s.drugLicense && s.fssaiNo ? ' | ' : ''}
+          {s.fssaiNo ? `FSSAI: ${s.fssaiNo}` : ''}
         </p>
       </div>
 
@@ -180,18 +177,6 @@ function SampleInvoiceBody({ s, invoicePrefix, terms, today, sampleInvNo }: {
       <div style={{ borderTop: '1px solid #CC0000', paddingTop: '3px', marginBottom: '3px' }}>
         <table style={{ width: '100%', fontSize: '9px' }}>
           <tbody>
-            <tr>
-              <td style={{ textAlign: 'left', padding: '1px 4px', color: '#555' }}>Subtotal</td>
-              <td style={{ textAlign: 'right', padding: '1px 4px', fontWeight: 600, color: '#333' }}>{formatINR(subtotal)}</td>
-            </tr>
-            <tr>
-              <td style={{ textAlign: 'left', padding: '1px 4px', color: '#555' }}>CGST</td>
-              <td style={{ textAlign: 'right', padding: '1px 4px', color: '#333' }}>{formatINR(cgst)}</td>
-            </tr>
-            <tr>
-              <td style={{ textAlign: 'left', padding: '1px 4px', color: '#555' }}>SGST</td>
-              <td style={{ textAlign: 'right', padding: '1px 4px', color: '#333' }}>{formatINR(sgst)}</td>
-            </tr>
             <tr>
               <td colSpan={2} style={{ borderTop: '1px solid #CC0000', padding: '0' }} />
             </tr>

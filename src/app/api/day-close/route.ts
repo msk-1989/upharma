@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getTodayIST, getTomorrowIST } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/day-close — Returns today's day close record with live calculations
 export async function GET() {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = getTodayIST();
+    const tomorrow = getTomorrowIST();
 
     // Find or create today's DayClose record
     let dayClose = await db.dayClose.findFirst({
@@ -101,10 +100,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = getTodayIST();
+    const tomorrow = getTomorrowIST();
 
     // Check if a DayClose record exists for today
     const existing = await db.dayClose.findFirst({

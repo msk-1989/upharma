@@ -23,6 +23,10 @@ import {
   Layers,
   FileSpreadsheet,
   FileCode,
+  Shield,
+  ClipboardList,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -114,7 +118,7 @@ interface PurchaseReportData {
   summary: PurchaseSummary;
 }
 
-type ReportType = 'sales' | 'purchases' | 'gst' | 'stock' | 'expiry' | 'profit';
+type ReportType = 'sales' | 'purchases' | 'gst' | 'stock' | 'expiry' | 'profit' | 'schedule-inventory' | 'schedule-sales';
 
 function formatCurrency(amount: number | undefined | null) {
   const val = amount ?? 0;
@@ -191,7 +195,7 @@ export function ReportsPage() {
     try {
       const params = new URLSearchParams();
       params.set('type', reportType);
-      if (reportType !== 'stock' && reportType !== 'expiry') {
+      if (reportType !== 'stock' && reportType !== 'expiry' && reportType !== 'schedule-inventory') {
         params.set('from', dateFrom);
         params.set('to', dateTo);
       }
@@ -210,6 +214,17 @@ export function ReportsPage() {
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
+
+  // Listen for schedule sales date change events from child
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.from) setDateFrom(detail.from);
+      if (detail?.to) setDateTo(detail.to);
+    };
+    window.addEventListener('scheduleDateChange', handler);
+    return () => window.removeEventListener('scheduleDateChange', handler);
+  }, []);
 
   const handleTabChange = (value: string) => {
     setReportType(value as ReportType);
@@ -314,11 +329,17 @@ export function ReportsPage() {
           <TabsTrigger value="profit" className="gap-1.5 text-xs sm:text-sm">
             <TrendingUp className="w-4 h-4" /> Profit
           </TabsTrigger>
+          <TabsTrigger value="schedule-inventory" className="gap-1.5 text-xs sm:text-sm">
+            <Shield className="w-4 h-4" /> Sch. Inventory
+          </TabsTrigger>
+          <TabsTrigger value="schedule-sales" className="gap-1.5 text-xs sm:text-sm">
+            <ClipboardList className="w-4 h-4" /> Sch. Sales
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {/* Date Range (hidden for stock and expiry) */}
-      {reportType !== 'stock' && reportType !== 'expiry' && (
+      {/* Date Range (hidden for stock, expiry, schedule-inventory, schedule-sales - they have their own) */}
+      {reportType !== 'stock' && reportType !== 'expiry' && reportType !== 'schedule-inventory' && reportType !== 'schedule-sales' && (
         <Card className="border-border/60 shadow-sm">
           <CardContent className="p-4">
             <div className="flex flex-wrap gap-3 items-end">
@@ -418,6 +439,16 @@ export function ReportsPage() {
           {/* PROFIT REPORT */}
           {reportType === 'profit' && (
             <ProfitReport data={reportData as ProfitReport} />
+          )}
+
+          {/* SCHEDULE-WISE INVENTORY */}
+          {reportType === 'schedule-inventory' && (
+            <ScheduleInventoryReport data={reportData} />
+          )}
+
+          {/* SCHEDULE-WISE SALES */}
+          {reportType === 'schedule-sales' && (
+            <ScheduleSalesReport data={reportData} dateFrom={dateFrom} dateTo={dateTo} />
           )}
         </>
       ) : (
@@ -565,10 +596,10 @@ function SalesReport({
                     Grand Total
                   </th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
-                    Payment
+                    Schedule
                   </th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
-                    Status
+                    Payment
                   </th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider p-3">
                     Date
@@ -579,14 +610,23 @@ function SalesReport({
                 {data.sales?.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="p-8 text-center text-gray-400"
                     >
                       No sales found for this period
                     </td>
                   </tr>
                 ) : (
-                  data.sales?.map((sale: any, i: number) => (
+                  data.sales?.map((sale: any, i: number) => {
+                    // Get unique drug schedules from sale items
+                    const schedules = [...new Set(
+                      (sale.items || [])
+                        .map((item: any) => item.medicine?.drugSchedule || 'OTC')
+                        .filter(Boolean)
+                    )];
+                    const hasRestricted = schedules.some((s: string) => ['H', 'H1', 'X'].includes(s));
+
+                    return (
                     <tr
                       key={sale.id || i}
                       className="border-b border-border/50 last:border-0 hover:bg-gray-50/50 transition-colors"
@@ -615,6 +655,22 @@ function SalesReport({
                         {formatCurrency(sale.grandTotal)}
                       </td>
                       <td className="p-3">
+                        <div className="flex flex-wrap gap-1">
+                          {schedules.map((sch: string) => {
+                            const style = getScheduleStyle(sch);
+                            return (
+                              <Badge
+                                key={sch}
+                                variant="outline"
+                                className={`text-[10px] px-1.5 py-0 ${style.bgColor} ${style.textColor} ${style.color} border`}
+                              >
+                                {style.label}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="p-3">
                         <Badge
                           variant="secondary"
                           className={`text-xs ${paymentColors[sale.paymentMethod] || 'bg-gray-100 text-gray-700'}`}
@@ -622,19 +678,12 @@ function SalesReport({
                           {sale.paymentMethod || 'Cash'}
                         </Badge>
                       </td>
-                      <td className="p-3">
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs ${sale.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : sale.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}
-                        >
-                          {sale.status || 'Completed'}
-                        </Badge>
-                      </td>
                       <td className="p-3 text-sm text-gray-500">
                         {sale.date ? formatDate(sale.date) : sale.createdAt ? formatDate(sale.createdAt) : '-'}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1567,6 +1616,336 @@ function ProfitReport({ data }: { data: ProfitReport }) {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/* ======================= SCHEDULE-WISE INVENTORY REPORT ======================= */
+
+const SCHEDULE_CONFIG: Record<string, { label: string; color: string; bgColor: string; textColor: string }> = {
+  OTC: { label: 'OTC', color: 'border-green-300', bgColor: 'bg-green-50', textColor: 'text-green-700' },
+  G: { label: 'Sch. G', color: 'border-blue-300', bgColor: 'bg-blue-50', textColor: 'text-blue-700' },
+  H: { label: 'Sch. H', color: 'border-amber-300', bgColor: 'bg-amber-50', textColor: 'text-amber-700' },
+  H1: { label: 'Sch. H1', color: 'border-orange-300', bgColor: 'bg-orange-50', textColor: 'text-orange-700' },
+  X: { label: 'Sch. X', color: 'border-red-300', bgColor: 'bg-red-50', textColor: 'text-red-700' },
+  K: { label: 'Sch. K', color: 'border-gray-300', bgColor: 'bg-gray-50', textColor: 'text-gray-600' },
+  C: { label: 'Sch. C', color: 'border-purple-300', bgColor: 'bg-purple-50', textColor: 'text-purple-700' },
+  C1: { label: 'Sch. C1', color: 'border-purple-300', bgColor: 'bg-purple-50', textColor: 'text-purple-700' },
+  N: { label: 'Sch. N', color: 'border-teal-300', bgColor: 'bg-teal-50', textColor: 'text-teal-700' },
+  P: { label: 'Sch. P', color: 'border-indigo-300', bgColor: 'bg-indigo-50', textColor: 'text-indigo-700' },
+};
+
+function getScheduleStyle(schedule: string) {
+  return SCHEDULE_CONFIG[schedule] || SCHEDULE_CONFIG['OTC'];
+}
+
+function ScheduleInventoryReport({ data }: { data: any }) {
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+
+  if (!data?.groups) return null;
+  const { groups, summary } = data;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard label="Drug Schedules" value={String(summary.totalSchedules)} icon={Shield} color="text-emerald-600" bg="bg-emerald-50" />
+        <MetricCard label="Total Items" value={String(summary.totalItems)} icon={Package} color="text-blue-600" bg="bg-blue-50" />
+        <MetricCard label="Cost Value" value={formatCurrency(summary.totalCostValue)} icon={IndianRupee} color="text-orange-600" bg="bg-orange-50" />
+        <MetricCard label="Sale Value" value={formatCurrency(summary.totalSaleValue)} icon={TrendingUp} color="text-emerald-600" bg="bg-emerald-50" />
+      </div>
+
+      {/* Schedule Groups */}
+      <div className="space-y-3">
+        {groups.map((group: any) => {
+          const style = getScheduleStyle(group.schedule);
+          const isExpanded = expandedGroup === group.schedule;
+
+          return (
+            <Card key={group.schedule} className={`border ${style.color} shadow-sm overflow-hidden`}>
+              {/* Group Header */}
+              <button
+                onClick={() => setExpandedGroup(isExpanded ? null : group.schedule)}
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${style.bgColor} flex items-center justify-center`}>
+                    <Shield className={`w-5 h-5 ${style.textColor}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-gray-900">{style.label}</p>
+                    <p className="text-xs text-gray-500">{group.totalItems} items | {group.totalUnits.toLocaleString('en-IN')} units</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-xs text-gray-500">Cost Value</p>
+                    <p className="text-sm font-semibold text-gray-700">{formatCurrency(group.totalCostValue)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Sale Value</p>
+                    <p className="text-sm font-bold text-emerald-700">{formatCurrency(group.totalSaleValue)}</p>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                </div>
+              </button>
+
+              {/* Expanded Items */}
+              {isExpanded && (
+                <div className="border-t border-gray-100">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className={`bg-gray-50/80 ${style.bgColor}`}>
+                          <th className="text-left text-xs font-medium text-gray-500 uppercase p-3">Medicine</th>
+                          <th className="text-left text-xs font-medium text-gray-500 uppercase p-3 hidden md:table-cell">Manufacturer</th>
+                          <th className="text-center text-xs font-medium text-gray-500 uppercase p-3">Stock</th>
+                          <th className="text-left text-xs font-medium text-gray-500 uppercase p-3 hidden lg:table-cell">Batches</th>
+                          <th className="text-right text-xs font-medium text-gray-500 uppercase p-3">Cost Val.</th>
+                          <th className="text-right text-xs font-medium text-gray-500 uppercase p-3">Sale Val.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.items.map((item: any) => (
+                          <tr key={item.id} className="border-t border-gray-50 hover:bg-gray-50/30">
+                            <td className="p-3">
+                              <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                              <p className="text-xs text-gray-400">{item.genericName} | {item.category}</p>
+                            </td>
+                            <td className="p-3 text-xs text-gray-600 hidden md:table-cell">{item.manufacturer || '-'}</td>
+                            <td className="p-3 text-center">
+                              <span className="text-sm font-semibold text-gray-900">{item.totalStock}</span>
+                              <span className="text-xs text-gray-400 ml-1">{item.baseUnit.toLowerCase()}s</span>
+                            </td>
+                            <td className="p-3 hidden lg:table-cell">
+                              <div className="space-y-0.5">
+                                {item.batches.slice(0, 2).map((b: any, i: number) => (
+                                  <p key={i} className="text-[11px] text-gray-500">
+                                    {b.batchNo}: {b.stockQty} qty (exp {new Date(b.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })})
+                                  </p>
+                                ))}
+                                {item.batches.length > 2 && (
+                                  <p className="text-[10px] text-gray-400">+{item.batches.length - 2} more batches</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-right text-sm text-gray-600">{formatCurrency(item.stockValue)}</td>
+                            <td className="p-3 text-right text-sm font-semibold text-emerald-700">{formatCurrency(item.saleValue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ======================= SCHEDULE-WISE SALES REPORT ======================= */
+
+function getThisWeekStart() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now.setDate(diff));
+  return monday.toISOString().split('T')[0];
+}
+
+function ScheduleSalesReport({ data, dateFrom, dateTo }: { data: any; dateFrom: string; dateTo: string }) {
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [expandedSale, setExpandedSale] = useState<string | null>(null);
+  const [quickFilter, setQuickFilter] = useState<'custom' | 'today' | 'week' | 'month'>('month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+
+  if (!data?.groups) return null;
+  const { groups, summary } = data;
+
+  const handleQuickFilter = (filter: 'today' | 'week' | 'month' | 'custom', newFrom?: string, newTo?: string) => {
+    setQuickFilter(filter);
+    if (newFrom) setCustomFrom(newFrom);
+    if (newTo) setCustomTo(newTo);
+    // Dispatch custom events that the parent can listen to
+    const detail = { from: newFrom, to: newTo };
+    window.dispatchEvent(new CustomEvent('scheduleDateChange', { detail }));
+  };
+
+  const handleCustomDateApply = () => {
+    if (customFrom && customTo) {
+      handleQuickFilter('custom', customFrom, customTo);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Quick Date Filters */}
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-gray-500">Quick Filter</Label>
+              <div className="flex gap-2 flex-wrap">
+                <Button variant={quickFilter === 'today' ? 'default' : 'outline'} size="sm" className="h-8 text-xs"
+                  onClick={() => handleQuickFilter('today', getToday(), getToday())}>
+                  Today
+                </Button>
+                <Button variant={quickFilter === 'week' ? 'default' : 'outline'} size="sm" className="h-8 text-xs"
+                  onClick={() => handleQuickFilter('week', getThisWeekStart(), getToday())}>
+                  This Week
+                </Button>
+                <Button variant={quickFilter === 'month' ? 'default' : 'outline'} size="sm" className="h-8 text-xs"
+                  onClick={() => handleQuickFilter('month', getFirstDayOfMonth(), getToday())}>
+                  This Month
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2 items-end">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-500">From</Label>
+                <Input type="date" value={quickFilter === 'custom' ? customFrom : dateFrom} onChange={(e) => { setCustomFrom(e.target.value); setQuickFilter('custom'); }} className="w-40 h-9 text-sm border-border/80" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-500">To</Label>
+                <Input type="date" value={quickFilter === 'custom' ? customTo : dateTo} onChange={(e) => { setCustomTo(e.target.value); setQuickFilter('custom'); }} className="w-40 h-9 text-sm border-border/80" />
+              </div>
+              <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleCustomDateApply} disabled={!customFrom || !customTo}>Apply</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard label="Schedules Sold" value={String(summary.totalSchedules)} icon={Shield} color="text-emerald-600" bg="bg-emerald-50" />
+        <MetricCard label="Total Sales" value={String(summary.totalSales)} icon={ShoppingCart} color="text-blue-600" bg="bg-blue-50" />
+        <MetricCard label="Total Revenue" value={formatCurrency(summary.totalRevenue)} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50" />
+        <MetricCard label="Total Qty Sold" value={summary.totalQuantity.toLocaleString('en-IN')} icon={Package} color="text-purple-600" bg="bg-purple-50" />
+      </div>
+
+      {/* Schedule Groups */}
+      <div className="space-y-3">
+        {groups.map((group: any) => {
+          const style = getScheduleStyle(group.schedule);
+          const isExpanded = expandedGroup === group.schedule;
+
+          return (
+            <Card key={group.schedule} className={`border ${style.color} shadow-sm overflow-hidden`}>
+              {/* Group Header */}
+              <button
+                onClick={() => setExpandedGroup(isExpanded ? null : group.schedule)}
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${style.bgColor} flex items-center justify-center`}>
+                    <ClipboardList className={`w-5 h-5 ${style.textColor}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-gray-900">{style.label}</p>
+                    <p className="text-xs text-gray-500">{group.totalSalesCount} invoices | {group.totalQuantity} units sold</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Revenue</p>
+                    <p className="text-sm font-bold text-emerald-700">{formatCurrency(group.totalRevenue)}</p>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                </div>
+              </button>
+
+              {/* Expanded Sales */}
+              {isExpanded && (
+                <div className="border-t border-gray-100">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50/80">
+                          <th className="text-left text-xs font-medium text-gray-500 uppercase p-3">Invoice</th>
+                          <th className="text-left text-xs font-medium text-gray-500 uppercase p-3 hidden sm:table-cell">Date</th>
+                          <th className="text-left text-xs font-medium text-gray-500 uppercase p-3 hidden md:table-cell">Customer</th>
+                          <th className="text-right text-xs font-medium text-gray-500 uppercase p-3">Amount</th>
+                          <th className="text-center text-xs font-medium text-gray-500 uppercase p-3 w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.sales.map((sale: any) => (
+                          <React.Fragment key={sale.invoiceNo}>
+                            <tr className="border-t border-gray-50 hover:bg-gray-50/30 cursor-pointer"
+                              onClick={() => setExpandedSale(expandedSale === sale.invoiceNo ? null : sale.invoiceNo)}>
+                              <td className="p-3">
+                                <p className="text-sm font-medium text-gray-900">{sale.invoiceNo}</p>
+                                <p className="text-xs text-gray-400">{sale.items.length} item(s)</p>
+                              </td>
+                              <td className="p-3 text-xs text-gray-600 hidden sm:table-cell">
+                                {formatDate(sale.date)}
+                              </td>
+                              <td className="p-3 text-xs text-gray-600 hidden md:table-cell">
+                                {sale.customerName || 'Walk-in'}
+                              </td>
+                              <td className="p-3 text-right text-sm font-semibold text-emerald-700">
+                                {formatCurrency(sale.itemTotal)}
+                              </td>
+                              <td className="p-3 text-center">
+                                {expandedSale === sale.invoiceNo ? (
+                                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 inline" />
+                                ) : (
+                                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 inline" />
+                                )}
+                              </td>
+                            </tr>
+                            {/* Expanded items */}
+                            {expandedSale === sale.invoiceNo && (
+                              <tr className="border-t border-gray-100 bg-gray-50/50">
+                                <td colSpan={5} className="p-3">
+                                  <table className="w-full">
+                                    <thead>
+                                      <tr>
+                                        <th className="text-left text-[10px] font-medium text-gray-400 uppercase pb-1 pl-2">Medicine</th>
+                                        <th className="text-center text-[10px] font-medium text-gray-400 uppercase pb-1">Qty</th>
+                                        <th className="text-center text-[10px] font-medium text-gray-400 uppercase pb-1 hidden sm:table-cell">Batch</th>
+                                        <th className="text-right text-[10px] font-medium text-gray-400 uppercase pb-1">Rate</th>
+                                        <th className="text-right text-[10px] font-medium text-gray-400 uppercase pb-1 pr-2">Total</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {sale.items.map((item: any, idx: number) => (
+                                        <tr key={idx}>
+                                          <td className="py-1 pl-2 text-xs text-gray-700">{item.medicineName}</td>
+                                          <td className="py-1 text-center text-xs text-gray-600">{item.quantity} {item.unitType}</td>
+                                          <td className="py-1 text-center text-xs text-gray-500 hidden sm:table-cell">{item.batchNo || '-'}</td>
+                                          <td className="py-1 text-right text-xs text-gray-600">{formatCurrency(item.saleRate)}</td>
+                                          <td className="py-1 text-right text-xs font-medium text-gray-900 pr-2">{formatCurrency(item.total)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

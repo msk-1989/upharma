@@ -102,6 +102,24 @@ interface Customer {
   balance: number;
 }
 
+interface Doctor {
+  id: string;
+  name: string;
+  qualification: string | null;
+  specialty: string | null;
+  phone: string | null;
+  active: boolean;
+}
+
+interface Doctor {
+  id: string;
+  name: string;
+  qualification: string | null;
+  specialty: string | null;
+  phone: string | null;
+  active: boolean;
+}
+
 interface RecentSale {
   id: string;
   invoiceNo: string;
@@ -198,6 +216,12 @@ export function POSBillingPage() {
   const [quickCustomerPhone, setQuickCustomerPhone] = useState('');
   const customerInputRef = useRef<HTMLInputElement>(null);
 
+  // Doctor state
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorSearch, setDoctorSearch] = useState('');
+  const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
+  const doctorDropdownRef = useRef<HTMLDivElement>(null);
+
   // Loyalty & Credit state
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
   const [creditWarning, setCreditWarning] = useState<string | null>(null);
@@ -293,6 +317,17 @@ export function POSBillingPage() {
       .catch(console.error);
   }, []);
 
+  // ==================== LOAD DOCTORS ====================
+
+  useEffect(() => {
+    fetch('/api/doctors')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success) setDoctors(res.data.filter((d: Doctor) => d.active));
+      })
+      .catch(console.error);
+  }, []);
+
   // ==================== LOAD RECENT SALES ====================
 
   const loadRecentSales = useCallback(() => {
@@ -381,6 +416,9 @@ export function POSBillingPage() {
       }
       if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
         setShowCustomerDropdown(false);
+      }
+      if (doctorDropdownRef.current && !doctorDropdownRef.current.contains(e.target as Node)) {
+        setShowDoctorDropdown(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -471,6 +509,7 @@ export function POSBillingPage() {
     setSelectedCustomerId(bill.customerId);
     setWalkInCustomerName(bill.customerName || '');
     setDoctorName(bill.doctorName || '');
+    setDoctorSearch(bill.doctorName || '');
     setCashReceived('');
     setUseLoyaltyPoints(false);
     setCreditWarning(null);
@@ -875,6 +914,7 @@ export function POSBillingPage() {
       setSelectedCustomerId('walk-in');
       setWalkInCustomerName('');
       setDoctorName('');
+      setDoctorSearch('');
       setPaymentMode('Cash');
       setUseLoyaltyPoints(false);
       setCreditWarning(null);
@@ -1179,9 +1219,6 @@ export function POSBillingPage() {
                         <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 pb-3">
                           Rate
                         </th>
-                        <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 pb-3">
-                          GST
-                        </th>
                         <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-6 pb-3">
                           Total
                         </th>
@@ -1273,21 +1310,9 @@ export function POSBillingPage() {
                               </p>
                             </td>
 
-                            <td className="px-3 py-3 text-right">
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0"
-                              >
-                                {item.gstPercent}%
-                              </Badge>
-                            </td>
-
                             <td className="px-6 py-3 text-right">
                               <p className="text-sm font-bold text-gray-900">
                                 {formatINR(lineTotal + gst)}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                +{formatINR(gst)} GST
                               </p>
                             </td>
 
@@ -1593,18 +1618,67 @@ export function POSBillingPage() {
                 </div>
               )}
 
-              {/* Doctor Name Input */}
+              {/* Doctor Name Dropdown */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-gray-600">
                   Doctor Name <span className="text-gray-400 font-normal">(optional)</span>
                 </Label>
-                <Input
-                  type="text"
-                  placeholder="Dr. Name (optional)"
-                  className="h-9 text-sm"
-                  value={doctorName}
-                  onChange={(e) => setDoctorName(e.target.value)}
-                />
+                <div className="relative" ref={doctorDropdownRef}>
+                  <Input
+                    type="text"
+                    placeholder="Search or type doctor name..."
+                    className="h-9 text-sm pr-8"
+                    value={doctorSearch}
+                    onChange={(e) => {
+                      setDoctorSearch(e.target.value);
+                      setShowDoctorDropdown(true);
+                      setDoctorName(e.target.value);
+                    }}
+                    onFocus={() => setShowDoctorDropdown(true)}
+                  />
+                  {doctorName && (
+                    <button
+                      type="button"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={() => {
+                        setDoctorName('');
+                        setDoctorSearch('');
+                      }}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {showDoctorDropdown && (doctorSearch.trim().length === 0 || doctors.filter((d) => d.name.toLowerCase().includes(doctorSearch.toLowerCase())).length > 0) && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {doctors
+                        .filter((d) => doctorSearch.trim().length === 0 || d.name.toLowerCase().includes(doctorSearch.toLowerCase()))
+                        .map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            className={`w-full px-3 py-2 text-left hover:bg-emerald-50 transition-colors border-b border-gray-100 last:border-0 text-sm ${doctorName === d.name ? 'bg-emerald-50 font-medium text-emerald-700' : ''}`}
+                            onClick={() => {
+                              setDoctorName(d.name);
+                              setDoctorSearch(d.name);
+                              setShowDoctorDropdown(false);
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-gray-900">Dr. {d.name}</span>
+                                {d.specialty && (
+                                  <span className="text-xs text-gray-400 ml-2">{d.specialty}</span>
+                                )}
+                              </div>
+                              {d.phone && (
+                                <span className="text-[11px] text-gray-400">{d.phone}</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Selected Customer Info with Loyalty & Credit */}
@@ -1734,28 +1808,6 @@ export function POSBillingPage() {
                     <span className="text-sm font-medium text-gray-900">
                       {formatINR(subtotal)}
                     </span>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">CGST</span>
-                      <span className="text-xs font-medium text-gray-700">
-                        {formatINR(totalCgst)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">SGST</span>
-                      <span className="text-xs font-medium text-gray-700">
-                        {formatINR(totalSgst)}
-                      </span>
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-600">Total GST</span>
-                      <span className="text-xs font-semibold text-gray-700">
-                        {formatINR(totalGst)}
-                      </span>
-                    </div>
                   </div>
 
                   {loyaltyDiscount > 0 && (

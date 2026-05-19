@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getTodayIST } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayIST();
 
     const [sales, allSales, customers, batches, medicines, recentSales, saleItems] = await Promise.all([
       db.sale.findMany({ where: { date: { gte: today }, status: 'Completed' } }),

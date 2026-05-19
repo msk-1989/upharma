@@ -783,7 +783,7 @@ export function PurchaseOrdersPage() {
 
       {/* ─── Create/Edit PO Dialog ───────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={(open) => { if (!open) resetCreateForm(); setCreateOpen(open); }}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-teal-600" />
@@ -854,23 +854,23 @@ export function PurchaseOrdersPage() {
               ) : (
                 <div className="border border-border rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="text-sm w-full" style={{ tableLayout: 'fixed', minWidth: '820px' }}>
                       <thead>
                         <tr className="bg-gray-50 border-b border-border">
-                          <th className="text-left text-xs font-medium text-gray-500 p-2.5 w-48">Medicine</th>
-                          <th className="text-center text-xs font-medium text-gray-500 p-2.5 w-20">Qty</th>
-                          <th className="text-left text-xs font-medium text-gray-500 p-2.5 w-24">Unit</th>
-                          <th className="text-right text-xs font-medium text-gray-500 p-2.5 w-28">Rate (₹)</th>
-                          <th className="text-right text-xs font-medium text-gray-500 p-2.5 w-20">GST %</th>
-                          <th className="text-right text-xs font-medium text-gray-500 p-2.5 w-28">Amount</th>
-                          <th className="p-2.5 w-10"></th>
+                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '26%' }}>Medicine</th>
+                          <th className="text-center text-xs font-medium text-gray-500 p-3" style={{ width: '10%' }}>Qty</th>
+                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '12%' }}>Unit</th>
+                          <th className="text-right text-xs font-medium text-gray-500 p-3" style={{ width: '14%' }}>Rate (₹)</th>
+                          <th className="text-right text-xs font-medium text-gray-500 p-3" style={{ width: '10%' }}>GST %</th>
+                          <th className="text-right text-xs font-medium text-gray-500 p-3" style={{ width: '14%' }}>Amount</th>
+                          <th className="p-3" style={{ width: '4%' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {createItems.map((item, idx) => (
                           <tr key={item._key} className="border-b border-border/50 last:border-b-0">
                             {/* Medicine Search */}
-                            <td className="p-2 relative">
+                            <td className="p-2.5 relative">
                               {item.medicineId ? (
                                 <div className="flex items-center justify-between gap-1">
                                   <span className="text-sm font-medium text-gray-900 truncate">{item.medicineName}</span>
@@ -889,15 +889,15 @@ export function PurchaseOrdersPage() {
                                     value={showMedDropdown === idx ? medicineSearch : ''}
                                     onFocus={() => { setShowMedDropdown(idx); setMedicineSearch(''); }}
                                     onChange={(e) => { setMedicineSearch(e.target.value); setShowMedDropdown(idx); }}
-                                    className="h-8 text-xs border-border/80"
+                                    className="h-10 text-sm border-border/80 w-full"
                                   />
                                   {showMedDropdown === idx && filteredMedicines.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 z-50 mt-0.5 bg-white border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                    <div className="absolute top-full left-0 right-0 z-50 mt-0.5 bg-white border border-border rounded-md shadow-lg max-h-56 overflow-y-auto">
                                       {filteredMedicines.map(med => (
                                         <button
                                           key={med.id}
                                           type="button"
-                                          className="w-full text-left px-3 py-2 text-xs hover:bg-teal-50 transition-colors border-b border-border/30 last:border-0"
+                                          className="w-full text-left px-3 py-2 text-sm hover:bg-teal-50 transition-colors border-b border-border/30 last:border-0"
                                           onClick={() => selectMedicineForItem(idx, med)}
                                         >
                                           <p className="font-medium text-gray-900">{med.name}</p>
@@ -911,19 +911,19 @@ export function PurchaseOrdersPage() {
                               )}
                             </td>
                             {/* Quantity */}
-                            <td className="p-2">
+                            <td className="p-2.5">
                               <Input
                                 type="number"
                                 min={1}
                                 value={item.quantity || ''}
                                 onChange={(e) => updateItem(idx, { quantity: parseInt(e.target.value) || 0 })}
-                                className="h-8 text-xs text-center border-border/80"
+                                className="h-10 text-sm text-center border-border/80 w-full"
                               />
                             </td>
                             {/* Unit Type */}
-                            <td className="p-2">
+                            <td className="p-2.5">
                               <Select value={item.unitType} onValueChange={(v) => updateItem(idx, { unitType: v as 'tablet' | 'strip' | 'box' })}>
-                                <SelectTrigger className="h-8 text-xs border-border/80 w-full">
+                                <SelectTrigger className="h-10 text-sm border-border/80 w-full">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -934,19 +934,19 @@ export function PurchaseOrdersPage() {
                               </Select>
                             </td>
                             {/* Purchase Rate */}
-                            <td className="p-2">
+                            <td className="p-2.5">
                               <Input
                                 type="number"
                                 step="0.01"
                                 min={0}
                                 value={item.purchaseRate || ''}
                                 onChange={(e) => updateItem(idx, { purchaseRate: parseFloat(e.target.value) || 0 })}
-                                className="h-8 text-xs text-right border-border/80"
+                                className="h-10 text-sm text-right border-border/80 w-full"
                                 placeholder="0.00"
                               />
                             </td>
                             {/* GST % */}
-                            <td className="p-2 text-right">
+                            <td className="p-2.5">
                               <Input
                                 type="number"
                                 step="0.5"
@@ -954,12 +954,12 @@ export function PurchaseOrdersPage() {
                                 max={28}
                                 value={item.gstPercent || ''}
                                 onChange={(e) => updateItem(idx, { gstPercent: parseFloat(e.target.value) || 0 })}
-                                className="h-8 text-xs text-right border-border/80"
+                                className="h-10 text-sm text-right border-border/80 w-full"
                                 placeholder="12"
                               />
                             </td>
                             {/* Line Total */}
-                            <td className="p-2 text-right text-xs font-semibold text-gray-900">
+                            <td className="p-2.5 text-right text-sm font-semibold text-gray-900 whitespace-nowrap">
                               {(() => {
                                 const med = medicines.find(m => m.id === item.medicineId);
                                 let qtySmallest = item.quantity;
@@ -969,7 +969,7 @@ export function PurchaseOrdersPage() {
                               })()}
                             </td>
                             {/* Remove */}
-                            <td className="p-2">
+                            <td className="p-2.5">
                               <button
                                 type="button"
                                 className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
@@ -1222,7 +1222,7 @@ export function PurchaseOrdersPage() {
 
       {/* ─── Convert to GRN Dialog ───────────────────────────────── */}
       <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowRightLeft className="w-5 h-5 text-teal-600" />
@@ -1253,15 +1253,15 @@ export function PurchaseOrdersPage() {
               {/* GRN Items */}
               <div className="border border-border rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="text-sm w-full" style={{ tableLayout: 'fixed', minWidth: '800px' }}>
                     <thead>
                       <tr className="bg-gray-50 border-b border-border">
-                        <th className="text-left text-xs font-medium text-gray-500 p-2.5 w-44">Medicine</th>
-                        <th className="text-center text-xs font-medium text-gray-500 p-2.5 w-20">Ordered</th>
-                        <th className="text-center text-xs font-medium text-gray-500 p-2.5 w-20">Received</th>
-                        <th className="text-left text-xs font-medium text-gray-500 p-2.5 w-28">Batch No *</th>
-                        <th className="text-left text-xs font-medium text-gray-500 p-2.5 w-36">Expiry Date *</th>
-                        <th className="text-right text-xs font-medium text-gray-500 p-2.5 w-28">Rate (₹)</th>
+                        <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '20%' }}>Medicine</th>
+                        <th className="text-center text-xs font-medium text-gray-500 p-3" style={{ width: '12%' }}>Ordered</th>
+                        <th className="text-center text-xs font-medium text-gray-500 p-3" style={{ width: '12%' }}>Received</th>
+                        <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '18%' }}>Batch No *</th>
+                        <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '18%' }}>Expiry Date *</th>
+                        <th className="text-right text-xs font-medium text-gray-500 p-3" style={{ width: '14%' }}>Rate (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1276,7 +1276,7 @@ export function PurchaseOrdersPage() {
                               max={item.remainingQty}
                               value={item.receivedQty || ''}
                               onChange={(e) => updateGRNItem(idx, { receivedQty: parseInt(e.target.value) || 0 })}
-                              className="h-8 text-xs text-center border-border/80"
+                              className="h-10 text-sm text-center border-border/80 w-full"
                             />
                             {item.remainingQty < item.orderedQty && (
                               <p className="text-[10px] text-amber-600 mt-0.5">Max: {item.remainingQty}</p>
@@ -1286,7 +1286,7 @@ export function PurchaseOrdersPage() {
                             <Input
                               value={item.batchNo}
                               onChange={(e) => updateGRNItem(idx, { batchNo: e.target.value })}
-                              className="h-8 text-xs border-border/80"
+                              className="h-10 text-sm border-border/80 w-full"
                               placeholder="e.g. B2024001"
                             />
                           </td>
@@ -1295,7 +1295,7 @@ export function PurchaseOrdersPage() {
                               type="date"
                               value={item.expiryDate}
                               onChange={(e) => updateGRNItem(idx, { expiryDate: e.target.value })}
-                              className="h-8 text-xs border-border/80"
+                              className="h-10 text-sm border-border/80 w-full"
                             />
                           </td>
                           <td className="p-2.5">
@@ -1305,7 +1305,7 @@ export function PurchaseOrdersPage() {
                               min={0}
                               value={item.purchaseRate || ''}
                               onChange={(e) => updateGRNItem(idx, { purchaseRate: parseFloat(e.target.value) || 0 })}
-                              className="h-8 text-xs text-right border-border/80"
+                              className="h-10 text-sm text-right border-border/80 w-full"
                             />
                           </td>
                         </tr>

@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
       ...(search
         ? {
             OR: [
-              { name: { contains: search } },
-              { specialty: { contains: search } },
-              { phone: { contains: search } },
-              { registrationNo: { contains: search } },
+              { name: { contains: search, mode: 'insensitive' } },
+              { specialty: { contains: search, mode: 'insensitive' } },
+              { phone: { contains: search, mode: 'insensitive' } },
+              { registrationNo: { contains: search, mode: 'insensitive' } },
             ],
           }
         : {}),

@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
         return await getExpiryReport();
       case 'profit':
         return await getProfitReport(dateFilter);
+      case 'schedule-inventory':
+        return await getScheduleInventoryReport();
+      case 'schedule-sales':
+        return await getScheduleSalesReport(dateFilter);
       default:
         return NextResponse.json({ success: false, error: 'Invalid report type' }, { status: 400 });
     }
@@ -48,7 +52,11 @@ async function getSalesReport(dateFilter: Record<string, unknown>) {
     orderBy: { date: 'desc' },
     include: {
       customer: { select: { name: true } },
-      items: true,
+      items: {
+        include: {
+          medicine: { select: { name: true, drugSchedule: true } },
+        },
+      },
     },
   });
 
@@ -422,6 +430,230 @@ async function getProfitReport(dateFilter: Record<string, unknown>) {
       salesVsPurchases: {
         salesCount: sales.length,
         purchaseCount: purchases.length,
+      },
+    },
+  });
+}
+
+// Drug Schedule-wise Inventory Report
+async function getScheduleInventoryReport() {
+  const medicines = await db.medicine.findMany({
+    where: { active: true },
+    include: {
+      batches: {
+        where: { active: true },
+        select: { stockQty: true, purchaseRate: true, saleRate: true, mrp: true, expiryDate: true, batchNo: true },
+        orderBy: { expiryDate: 'asc' },
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+
+  // Group by drug schedule
+  const scheduleGroups: Record<string, {
+    schedule: string;
+    items: {
+      id: string;
+      name: string;
+      genericName: string | null;
+      manufacturer: string | null;
+      category: string | null;
+      baseUnit: string;
+      totalStock: number;
+      batches: { batchNo: string; stockQty: number; purchaseRate: number; saleRate: number; mrp: number; expiryDate: string }[];
+      stockValue: number;
+      saleValue: number;
+    }[];
+    totalItems: number;
+    totalUnits: number;
+    totalCostValue: number;
+    totalSaleValue: number;
+  }> = {};
+
+  for (const med of medicines) {
+    const totalStock = med.batches.reduce((s, b) => s + b.stockQty, 0);
+    if (totalStock === 0) continue;
+
+    const schedule = med.drugSchedule || 'OTC';
+    if (!scheduleGroups[schedule]) {
+      scheduleGroups[schedule] = {
+        schedule,
+        items: [],
+        totalItems: 0,
+        totalUnits: 0,
+        totalCostValue: 0,
+        totalSaleValue: 0,
+      };
+    }
+
+    const stockValue = med.batches.reduce((s, b) => s + b.stockQty * b.purchaseRate, 0);
+    const saleValue = med.batches.reduce((s, b) => s + b.stockQty * b.saleRate, 0);
+
+    scheduleGroups[schedule].items.push({
+      id: med.id,
+      name: med.name,
+      genericName: med.genericName,
+      manufacturer: med.manufacturer,
+      category: med.category,
+      baseUnit: med.baseUnit,
+      totalStock,
+      batches: med.batches.map(b => ({
+        batchNo: b.batchNo,
+        stockQty: b.stockQty,
+        purchaseRate: b.purchaseRate,
+        saleRate: b.saleRate,
+        mrp: b.mrp,
+        expiryDate: b.expiryDate.toISOString(),
+      })),
+      stockValue: Math.round(stockValue * 100) / 100,
+      saleValue: Math.round(saleValue * 100) / 100,
+    });
+
+    scheduleGroups[schedule].totalItems += 1;
+    scheduleGroups[schedule].totalUnits += totalStock;
+    scheduleGroups[schedule].totalCostValue += stockValue;
+    scheduleGroups[schedule].totalSaleValue += saleValue;
+  }
+
+  const groups = Object.values(scheduleGroups).map(g => ({
+    ...g,
+    totalCostValue: Math.round(g.totalCostValue * 100) / 100,
+    totalSaleValue: Math.round(g.totalSaleValue * 100) / 100,
+  }));
+
+  const overallSummary = {
+    totalSchedules: groups.length,
+    totalItems: groups.reduce((s, g) => s + g.totalItems, 0),
+    totalUnits: groups.reduce((s, g) => s + g.totalUnits, 0),
+    totalCostValue: groups.reduce((s, g) => s + g.totalCostValue, 0),
+    totalSaleValue: groups.reduce((s, g) => s + g.totalSaleValue, 0),
+  };
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      groups,
+      summary: {
+        ...overallSummary,
+        totalCostValue: Math.round(overallSummary.totalCostValue * 100) / 100,
+        totalSaleValue: Math.round(overallSummary.totalSaleValue * 100) / 100,
+      },
+    },
+  });
+}
+
+// Drug Schedule-wise Sales Report
+async function getScheduleSalesReport(dateFilter: Record<string, unknown>) {
+  const sales = await db.sale.findMany({
+    where: {
+      status: 'Completed',
+      ...(dateFilter && Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
+    },
+    include: {
+      items: {
+        include: {
+          medicine: {
+            select: { name: true, genericName: true, drugSchedule: true, manufacturer: true, category: true, baseUnit: true },
+          },
+        },
+      },
+      customer: { select: { name: true } },
+    },
+    orderBy: { date: 'desc' },
+  });
+
+  // Group sale items by drug schedule
+  const scheduleGroups: Record<string, {
+    schedule: string;
+    sales: {
+      invoiceNo: string;
+      date: string;
+      customerName: string | null;
+      items: {
+        medicineName: string;
+        genericName: string | null;
+        quantity: number;
+        unitType: string;
+        saleRate: number;
+        total: number;
+        batchNo: string | null;
+      }[];
+      itemTotal: number;
+    }[];
+    totalSalesCount: number;
+    totalQuantity: number;
+    totalRevenue: number;
+  }> = {};
+
+  let totalRevenueAll = 0;
+  let totalSalesCount = 0;
+
+  for (const sale of sales) {
+    for (const item of sale.items) {
+      const schedule = item.medicine?.drugSchedule || 'OTC';
+      if (!scheduleGroups[schedule]) {
+        scheduleGroups[schedule] = {
+          schedule,
+          sales: [],
+          totalSalesCount: 0,
+          totalQuantity: 0,
+          totalRevenue: 0,
+        };
+      }
+
+      // Check if this sale is already in the group
+      const existingSale = scheduleGroups[schedule].sales.find(s => s.invoiceNo === sale.invoiceNo);
+      if (existingSale) {
+        existingSale.items.push({
+          medicineName: item.medicine?.name || item.medicineName,
+          genericName: item.medicine?.genericName || null,
+          quantity: item.quantity,
+          unitType: item.unitType,
+          saleRate: item.saleRate,
+          total: item.total,
+          batchNo: item.batchNo,
+        });
+        existingSale.itemTotal += item.total;
+      } else {
+        scheduleGroups[schedule].sales.push({
+          invoiceNo: sale.invoiceNo,
+          date: sale.date.toISOString(),
+          customerName: sale.customer?.name || sale.customerName || null,
+          items: [{
+            medicineName: item.medicine?.name || item.medicineName,
+            genericName: item.medicine?.genericName || null,
+            quantity: item.quantity,
+            unitType: item.unitType,
+            saleRate: item.saleRate,
+            total: item.total,
+            batchNo: item.batchNo,
+          }],
+          itemTotal: item.total,
+        });
+        scheduleGroups[schedule].totalSalesCount += 1;
+      }
+
+      scheduleGroups[schedule].totalQuantity += item.quantity;
+      scheduleGroups[schedule].totalRevenue += item.total;
+    }
+    totalRevenueAll += sale.grandTotal;
+    totalSalesCount += 1;
+  }
+
+  const groups = Object.values(scheduleGroups).map(g => ({
+    ...g,
+    totalRevenue: Math.round(g.totalRevenue * 100) / 100,
+  }));
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      groups,
+      summary: {
+        totalSchedules: groups.length,
+        totalSales: totalSalesCount,
+        totalRevenue: Math.round(totalRevenueAll * 100) / 100,
+        totalQuantity: groups.reduce((s, g) => s + g.totalQuantity, 0),
       },
     },
   });

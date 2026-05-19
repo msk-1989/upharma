@@ -19,7 +19,12 @@ export const metadata: Metadata = {
   keywords: ["Upharma", "pharmacy", "ERP", "medical store", "billing", "inventory"],
   authors: [{ name: "Upharma Team" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: [
+      { url: "/favicon.png", sizes: "1024x1024", type: "image/png" },
+      { url: "/logo.svg", sizes: "any", type: "image/svg+xml" },
+    ],
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
   },
 };
 

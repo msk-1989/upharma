@@ -178,9 +178,7 @@ export function Sidebar() {
             effectiveCollapsed && 'justify-center px-2'
           )}
         >
-          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-sm">U</span>
-          </div>
+          <img src="/logo.svg" alt="Upharma" className="w-8 h-8 rounded-full flex-shrink-0" />
           {!effectiveCollapsed && (
             <span className="font-semibold text-base text-gray-900 whitespace-nowrap">
               Upharma

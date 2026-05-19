@@ -127,18 +127,41 @@ export function MedicinesPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    if (editing) {
-      const { id, totalStock, nextExpiry, batches, ...data } = form as any;
-      await fetch(`/api/medicines/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    } else {
-      await fetch('/api/medicines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+    try {
+      if (editing) {
+        const res = await fetch(`/api/medicines/${editing.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        });
+        const result = await res.json();
+        if (!result.success) {
+          alert('Update failed: ' + (result.error || 'Unknown error'));
+          setSaving(false);
+          return;
+        }
+      } else {
+        const res = await fetch('/api/medicines', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        });
+        const result = await res.json();
+        if (!result.success) {
+          alert('Create failed: ' + (result.error || 'Unknown error'));
+          setSaving(false);
+          return;
+        }
+      }
+      setDialogOpen(false);
+      setEditing(null);
+      setForm(emptyMedicine);
+      setShowAdvanced(false);
+      fetchMedicines();
+    } catch (err) {
+      alert('Error: ' + (err instanceof Error ? err.message : 'Network error'));
     }
-    setDialogOpen(false);
-    setEditing(null);
-    setForm(emptyMedicine);
-    setShowAdvanced(false);
     setSaving(false);
-    fetchMedicines();
   };
 
   const handleEdit = (med: Medicine) => {

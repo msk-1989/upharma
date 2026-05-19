@@ -137,9 +137,7 @@ export function Header({ user, onLogout }: { user: { name: string; role: string;
           <Menu className="w-5 h-5 text-gray-600" />
         </button>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-sm">U</span>
-          </div>
+          <img src="/logo.svg" alt="Upharma" className="w-8 h-8 rounded-full" />
           <span className="font-semibold text-base text-gray-900 truncate hidden sm:inline">Upharma</span>
         </div>
       </div>

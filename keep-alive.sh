@@ -1,8 +1,8 @@
 #!/bin/bash
 cd /home/z/my-project
 while true; do
-  echo "[$(date)] Starting server..."
-  npx next dev --turbopack -p 3000 2>&1
-  echo "[$(date)] Server died. Restarting in 3s..."
-  sleep 3
+  cp -r .next/static .next/standalone/.next/static 2>/dev/null
+  node .next/standalone/server.js -p 3000 -H 0.0.0.0 2>/dev/null
+  echo "Server died, restarting in 2s..."
+  sleep 2
 done

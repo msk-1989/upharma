@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
     }
     if (search) {
       where.OR = [
-        { poNumber: { contains: search } },
-        { supplier: { name: { contains: search } } },
-        { notes: { contains: search } },
+        { poNumber: { contains: search, mode: 'insensitive' } },
+        { supplier: { name: { contains: search, mode: 'insensitive' } } },
+        { notes: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     const prefix = `PO-${dateStr}-`;
 
     const lastPO = await db.purchaseOrder.findFirst({
-      where: { poNumber: { startsWith: prefix } },
+      where: { poNumber: { startsWith: prefix, mode: 'insensitive' } },
       orderBy: { createdAt: 'desc' },
       select: { poNumber: true },
     });

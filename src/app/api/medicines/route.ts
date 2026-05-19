@@ -47,11 +47,11 @@ export async function GET(request: NextRequest) {
     const where: Prisma.MedicineWhereInput = { active: true };
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { genericName: { contains: search } },
-        { barcode: { contains: search } },
-        { manufacturer: { contains: search } },
-        { alternateBarcodes: { contains: search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { genericName: { contains: search, mode: 'insensitive' } },
+        { barcode: { contains: search, mode: 'insensitive' } },
+        { manufacturer: { contains: search, mode: 'insensitive' } },
+        { alternateBarcodes: { contains: search, mode: 'insensitive' } },
       ];
     }
     if (category && category !== 'all') where.category = category;

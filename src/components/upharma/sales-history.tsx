@@ -298,7 +298,6 @@ function SaleDetailModal({ sale, onClose, onPrint }: {
                     <th className="text-center px-3 py-2 text-xs font-semibold text-gray-500">Qty</th>
                     <th className="text-center px-3 py-2 text-xs font-semibold text-gray-500">Batch</th>
                     <th className="text-center px-3 py-2 text-xs font-semibold text-gray-500">Exp</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-gray-500">GST</th>
                     <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Rate</th>
                     <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Total</th>
                   </tr>
@@ -313,7 +312,6 @@ function SaleDetailModal({ sale, onClose, onPrint }: {
                       </td>
                       <td className="px-3 py-2 text-center text-xs text-gray-500">{item.batchNo || '-'}</td>
                       <td className="px-3 py-2 text-center text-xs text-gray-500">{formatExpiry(item.expiryDate)}</td>
-                      <td className="px-3 py-2 text-center text-xs text-gray-500">{item.gstPercent}%</td>
                       <td className="px-3 py-2 text-right text-xs text-gray-600">{formatINR(item.saleRate)}</td>
                       <td className="px-3 py-2 text-right font-semibold text-xs text-gray-900">{formatINR(item.total)}</td>
                     </tr>
@@ -325,22 +323,6 @@ function SaleDetailModal({ sale, onClose, onPrint }: {
 
           {/* Totals */}
           <div className="bg-gray-50 rounded-xl p-4">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500">Subtotal</span>
-              <span className="font-semibold text-gray-700">{formatINR(sale.subtotal)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm mt-1">
-              <span className="text-gray-500">CGST</span>
-              <span className="text-gray-600">{formatINR(sale.totalGst / 2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm mt-1">
-              <span className="text-gray-500">SGST</span>
-              <span className="text-gray-600">{formatINR(sale.totalGst / 2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm mt-1">
-              <span className="text-gray-500">Total GST</span>
-              <span className="font-semibold text-gray-700">{formatINR(sale.totalGst)}</span>
-            </div>
             <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between items-center">
               <span className="text-base font-bold text-gray-900">Grand Total</span>
               <span className="text-base font-bold text-emerald-700">{formatINR(sale.grandTotal)}</span>
@@ -668,8 +650,7 @@ export function SalesHistoryPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date & Time</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Items</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Subtotal</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">GST</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Schedule</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Grand Total</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -679,14 +660,14 @@ export function SalesHistoryPage() {
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-12 text-center">
+                    <td colSpan={10} className="px-4 py-12 text-center">
                       <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-2" />
                       <p className="text-sm text-gray-500">Loading sales bills...</p>
                     </td>
                   </tr>
                 ) : paginatedSales.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-12 text-center">
+                    <td colSpan={10} className="px-4 py-12 text-center">
                       <Receipt className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                       <p className="text-sm font-medium text-gray-700">No sales found</p>
                       <p className="text-xs text-gray-400 mt-1">
@@ -730,11 +711,20 @@ export function SalesHistoryPage() {
                           {sale.items?.length || 0}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-xs text-gray-600">
-                        {formatINR(sale.subtotal)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-gray-500">
-                        {formatINR(sale.totalGst)}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {[...new Set((sale.items || []).map((item: any) => item.medicine?.drugSchedule || 'OTC').filter(Boolean))].map((sch: string) => (
+                            <span key={sch} className={`text-[10px] px-1.5 py-0 rounded border font-medium ${
+                              sch === 'H' ? 'bg-amber-50 text-amber-700 border-amber-300' :
+                              sch === 'H1' ? 'bg-orange-50 text-orange-700 border-orange-300' :
+                              sch === 'X' ? 'bg-red-50 text-red-700 border-red-300' :
+                              sch === 'G' ? 'bg-blue-50 text-blue-700 border-blue-300' :
+                              'bg-green-50 text-green-700 border-green-300'
+                            }`}>
+                              {sch === 'OTC' ? 'OTC' : `Sch. ${sch}`}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="text-sm font-bold text-gray-900">{formatINR(sale.grandTotal)}</span>

@@ -21,6 +21,10 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -788,8 +792,8 @@ export function BackupPage() {
             <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
             <div className="space-y-2 text-sm text-blue-800">
               <p>
-                Your Upharma data is stored locally in a <strong>SQLite database</strong> on this device.
-                This means your data persists across sessions within this environment.
+                Your Upharma data is stored in a <strong>PostgreSQL database</strong> on the cloud.
+                This means your data is securely persisted and accessible from anywhere.
               </p>
               <p>
                 We <strong>recommend exporting a backup regularly</strong> to keep your data safe. You can
@@ -801,6 +805,57 @@ export function BackupPage() {
                   Tip: Schedule weekly backups to ensure you never lose critical pharmacy data.
                 </span>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ─── Cloud Sync (Local ↔ Vercel) ────────────────────────────────────── */}
+      <Card className="border-violet-200 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center">
+              <Cloud className="w-4.5 h-4.5 text-violet-600" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold text-violet-900">
+                Cloud Sync
+              </CardTitle>
+              <CardDescription className="text-xs text-gray-500">
+                Sync data between this instance and your Vercel cloud app
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start gap-3">
+            <ArrowRightLeft className="w-4 h-4 text-violet-500 mt-0.5 flex-shrink-0" />
+            <div className="space-y-2 text-sm text-violet-800">
+              <p>
+                Use this to sync data between your <strong>local offline pharmacy PC</strong> and your <strong>Vercel cloud app</strong> (upharma.vercel.app).
+              </p>
+              <div className="text-xs text-violet-600 space-y-1">
+                <p><strong>Pull from Cloud:</strong> Export data from your Vercel app, then import here</p>
+                <p><strong>Push to Cloud:</strong> Export data from here, then import on your Vercel app</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Button
+              onClick={handleExport}
+              disabled={exporting}
+              variant="outline"
+              className="gap-2 border-violet-200 text-violet-700 hover:bg-violet-50"
+            >
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
+              Export for Cloud Sync
+            </Button>
+            <div
+              className="border-2 border-dashed border-violet-200 rounded-lg p-3 text-center hover:border-violet-300 hover:bg-violet-50/30 transition-colors cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <CloudDownload className="w-5 h-5 text-violet-400 mx-auto mb-1" />
+              <p className="text-xs text-violet-600 font-medium">Import Cloud Backup</p>
             </div>
           </div>
         </CardContent>

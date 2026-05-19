@@ -53,6 +53,9 @@ export async function GET(request: NextRequest) {
         user: { select: { name: true } },
         items: {
           orderBy: { createdAt: 'asc' },
+          include: {
+            medicine: { select: { name: true, drugSchedule: true } },
+          },
         },
       },
     });

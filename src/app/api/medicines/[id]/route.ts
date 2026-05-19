@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const body = await request.json();
-    const medicine = await db.medicine.update({ where: { id }, data: body });
+    // Whitelist allowed fields to prevent Prisma errors from extra keys
+    const { name, genericName, manufacturer, category, drugSchedule, hsnCode, gstPercent, barcode, alternateBarcodes, baseUnit, unitsPerStrip, stripsPerBox, allowLooseSale, purchaseRate, saleRate, mrp, reorderLevel, imageUrl } = body;
+    const medicine = await db.medicine.update({
+      where: { id },
+      data: { name, genericName, manufacturer, category, drugSchedule, hsnCode, gstPercent, barcode, alternateBarcodes, baseUnit, unitsPerStrip, stripsPerBox, allowLooseSale, purchaseRate, saleRate, mrp, reorderLevel, imageUrl },
+    });
     return NextResponse.json({ success: true, data: medicine });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';

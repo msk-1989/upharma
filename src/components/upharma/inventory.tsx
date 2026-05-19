@@ -410,12 +410,15 @@ export function InventoryPage() {
       };
 
       if (isEdit && selectedBatch) {
-        const res = await fetch(`/api/batches?id=${selectedBatch.id}`, {
+        const res = await fetch(`/api/batches/${selectedBatch.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error('Failed to update batch');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to update batch');
+        }
       } else {
         const res = await fetch('/api/batches', {
           method: 'POST',
@@ -428,6 +431,10 @@ export function InventoryPage() {
       setShowAddDialog(false);
       setShowEditDialog(false);
       resetForm();
+      toast({
+        title: isEdit ? 'Batch Updated' : 'Batch Created',
+        description: isEdit ? 'Batch details have been updated successfully.' : 'New batch has been added to inventory.',
+      });
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Operation failed');
@@ -440,7 +447,7 @@ export function InventoryPage() {
     if (!selectedBatch) return;
     try {
       setSubmitting(true);
-      const res = await fetch(`/api/batches?id=${selectedBatch.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/batches/${selectedBatch.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete batch');
       setShowDeleteDialog(false);
       setSelectedBatch(null);
@@ -461,12 +468,15 @@ export function InventoryPage() {
         ? selectedBatch.stockQty + qty
         : Math.max(0, selectedBatch.stockQty - qty);
 
-      const res = await fetch(`/api/batches?id=${selectedBatch.id}`, {
+      const res = await fetch(`/api/batches/${selectedBatch.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stockQty: newQty }),
       });
-      if (!res.ok) throw new Error('Failed to adjust stock');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to adjust stock');
+      }
       setInlineAdjustBatchId(null);
       setAdjustQty('');
       setAdjustReason('');
@@ -760,7 +770,7 @@ export function InventoryPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="sticky left-0 bg-background z-10 min-w-[180px]">
+                      <TableHead className="sticky left-0 bg-background z-10 min-w-[180px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
                         <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('medicineName')}>
                           Medicine
                           <ArrowUpDown className="h-3.5 w-3.5" />
@@ -795,7 +805,7 @@ export function InventoryPage() {
                       <TableHead className="min-w-[90px] text-right">Sale Rate</TableHead>
                       <TableHead className="min-w-[80px] text-right">MRP</TableHead>
                       <TableHead className="min-w-[100px] text-right">Stock Value</TableHead>
-                      <TableHead className="sticky right-0 bg-background z-10 min-w-[120px] text-center">Actions</TableHead>
+                      <TableHead className="sticky right-0 bg-background z-10 min-w-[120px] text-center shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -816,7 +826,7 @@ export function InventoryPage() {
                           <TableRow
                             className={days <= 0 ? 'bg-red-50/50 dark:bg-red-950/20' : days <= 90 ? 'bg-orange-50/30 dark:bg-orange-950/10' : ''}
                           >
-                            <TableCell className="sticky left-0 bg-inherit z-10">
+                            <TableCell className="sticky left-0 z-10 bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-2 after:bg-gradient-to-r after:from-transparent after:to-[rgba(0,0,0,0.03)]">
                               <div className="font-medium text-foreground">{batch.medicine?.name}</div>
                               <div className="text-xs text-muted-foreground">{batch.medicine?.genericName}</div>
                             </TableCell>
@@ -854,7 +864,7 @@ export function InventoryPage() {
                             <TableCell className="text-right text-sm font-medium text-emerald-700">
                               {formatCurrency(batch.stockQty * batch.purchaseRate)}
                             </TableCell>
-                            <TableCell className="sticky right-0 bg-inherit z-10">
+                            <TableCell className="sticky right-0 z-10 bg-inherit before:absolute before:inset-y-0 before:left-0 before:w-2 before:bg-gradient-to-l before:from-transparent before:to-[rgba(0,0,0,0.03)]">
                               <div className="flex items-center justify-center gap-1">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>

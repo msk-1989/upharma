@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         stockQty: stockQty ?? 0,
         initialStock: stockQty ?? 0,
         supplierId: supplierId || null,
-        purchaseDate: new Date(),
+        purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : new Date(),
         active: true,
       },
     });
