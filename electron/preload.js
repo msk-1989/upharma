@@ -59,6 +59,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   offlineCreateSale: (saleData) => ipcRenderer.invoke('offline-create-sale', saleData),
   offlineCreateCustomer: (customerData) => ipcRenderer.invoke('offline-create-customer', customerData),
 
+  // -------- Fix 4: Offline User Authentication --------
+  offlineLogin: (username, pin) => ipcRenderer.invoke('offline-login', username, pin),
+  offlineGetUsers: () => ipcRenderer.invoke('offline-get-users'),
+
+  // -------- Fix 2: Enterprise Invoice Numbering --------
+  generateInvoiceNo: (counterCode) => ipcRenderer.invoke('generate-invoice-no', counterCode),
+
+  // -------- Fix 4: Audit Logging --------
+  logAudit: (action, entity, entityId, userId, details) =>
+    ipcRenderer.invoke('log-audit', action, entity, entityId, userId, details),
+  getAuditLogs: (options) => ipcRenderer.invoke('get-audit-logs', options),
+
+  // -------- Fix 1: Stock Conflict Management --------
+  getStockConflicts: (includeResolved) => ipcRenderer.invoke('get-stock-conflicts', includeResolved),
+  resolveStockConflict: (conflictId, action) =>
+    ipcRenderer.invoke('resolve-stock-conflict', conflictId, action),
+
   // -------- App info --------
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 

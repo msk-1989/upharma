@@ -224,6 +224,124 @@ function registerIpcHandlers(opts = {}) {
     }
   });
 
+  // ================================================================
+  // Fix 4: Offline User Authentication
+  // ================================================================
+
+  // -------- offline-login --------
+  ipcMain.handle('offline-login', async (_event, username, pin) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const user = syncEngine.offlineLogin(username, pin);
+      if (user) {
+        // Log the login event in audit trail
+        syncEngine.logAudit('offline_login', 'local_users', user.id, user.id, {
+          username: user.username,
+          method: 'pin',
+        });
+        return { success: true, data: user };
+      }
+      return { success: false, error: 'Invalid credentials or user not found' };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  // -------- offline-get-users --------
+  ipcMain.handle('offline-get-users', async () => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const users = syncEngine.getUsers();
+      return { success: true, data: users };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  // ================================================================
+  // Fix 2: Enterprise Invoice Numbering
+  // ================================================================
+
+  // -------- generate-invoice-no --------
+  ipcMain.handle('generate-invoice-no', async (_event, counterCode) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const invoiceNo = syncEngine.generateInvoiceNo(counterCode || 'MAIN');
+      return { success: true, data: invoiceNo };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  // ================================================================
+  // Fix 4: Audit Logging
+  // ================================================================
+
+  // -------- log-audit --------
+  ipcMain.handle('log-audit', async (_event, action, entity, entityId, userId, details) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      syncEngine.logAudit(action, entity, entityId, userId, details);
+      return { success: true };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  // -------- get-audit-logs --------
+  ipcMain.handle('get-audit-logs', async (_event, options) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const logs = syncEngine.getAuditLogs(options || {});
+      return { success: true, data: logs };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  // ================================================================
+  // Fix 1: Stock Conflict Management
+  // ================================================================
+
+  // -------- get-stock-conflicts --------
+  ipcMain.handle('get-stock-conflicts', async (_event, includeResolved) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const conflicts = syncEngine.getStockConflicts(includeResolved || false);
+      return { success: true, data: conflicts };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  // -------- resolve-stock-conflict --------
+  ipcMain.handle('resolve-stock-conflict', async (_event, conflictId, action) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const result = syncEngine.resolveStockConflictById(conflictId, action);
+      if (result) {
+        return { success: true, message: 'Stock conflict resolved' };
+      }
+      return { error: 'Conflict not found' };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
   // Internal setter — called by the connectivity monitor in main.js
   return {
     setOnlineStatus(online) {
