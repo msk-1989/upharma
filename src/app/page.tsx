@@ -180,24 +180,50 @@ function useKeyboardShortcuts(isAuthenticated: boolean) {
 // ==================== MAIN PAGE ====================
 
 export default function Home() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user, setUser: setStoreUser, fetchDayStatus, fetchShiftStatus, shiftStatus, setCurrentPage } = useAppStore();
   const [loading, setLoading] = useState(true);
 
+  // Wait for zustand persist to rehydrate, then check session
   useEffect(() => {
-    // Check if already logged in (session-based for this web version)
-    const savedUser = sessionStorage.getItem('upharma_user');
-    if (savedUser) {
-      try { setUser(JSON.parse(savedUser)); } catch { /* ignore */ }
-    }
-    setLoading(false);
-  }, []);
+    const unsubFinish = useAppStore.persist.onFinishHydration(() => {
+      // After rehydration, check if we need to migrate from old sessionStorage
+      const storeState = useAppStore.getState();
+      if (!storeState.user) {
+        const savedUser = sessionStorage.getItem('upharma_user');
+        if (savedUser) {
+          try {
+            const parsed = JSON.parse(savedUser);
+            setStoreUser(parsed);
+            sessionStorage.removeItem('upharma_user');
+          } catch { /* ignore */ }
+        }
+      }
+      setLoading(false);
+    });
 
-  const { setUser: setStoreUser, fetchDayStatus, fetchShiftStatus, shiftStatus, setCurrentPage } = useAppStore();
+    // Fallback: if already hydrated (e.g. on non-first render)
+    if (useAppStore.persist.hasHydrated()) {
+      const storeState = useAppStore.getState();
+      if (!storeState.user) {
+        const savedUser = sessionStorage.getItem('upharma_user');
+        if (savedUser) {
+          try {
+            const parsed = JSON.parse(savedUser);
+            setStoreUser(parsed);
+            sessionStorage.removeItem('upharma_user');
+          } catch { /* ignore */ }
+        }
+      }
+      setLoading(false);
+    }
+
+    // Safety timeout — don't hang forever if hydration fails
+    const safetyTimer = setTimeout(() => setLoading(false), 2000);
+    return () => { unsubFinish(); clearTimeout(safetyTimer); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register keyboard shortcuts (only when authenticated)
   useKeyboardShortcuts(!!user);
-
-  // Fetch day-open status and shift status on login and refresh every 30s
   useEffect(() => {
     if (user) {
       fetchDayStatus();
@@ -235,15 +261,11 @@ export default function Home() {
   }, [user, shiftStatus, setCurrentPage]);
 
   const handleLogin = (u: AuthUser) => {
-    setUser(u);
     setStoreUser(u);
-    sessionStorage.setItem('upharma_user', JSON.stringify(u));
   };
 
   const handleLogout = () => {
-    setUser(null);
     setStoreUser(null);
-    sessionStorage.removeItem('upharma_user');
   };
 
   if (loading) {

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type PageKey =
   | 'dashboard'
@@ -58,73 +59,86 @@ interface AppState {
   fetchShiftStatus: () => Promise<void>;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
-  currentPage: 'dashboard',
-  sidebarCollapsed: false,
-  sidebarOpen: false,
-  commandPaletteOpen: false,
-  posPreSearch: null,
-  posSelectCustomer: null,
-  posClearCart: false,
-  user: null,
-  dayStatus: null,
-  // Counter shift defaults
-  shiftStatus: null,
-  activeShiftId: null,
-  activeCounterId: null,
-  activeCounterName: null,
-  setUser: (user) => set({ user }),
-  setCurrentPage: (page) => set({ currentPage: page }),
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  toggleSidebarOpen: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
-  toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
-  setPosPreSearch: (query) => set({ posPreSearch: query }),
-  setPosSelectCustomer: (id) => set({ posSelectCustomer: id }),
-  setPosClearCart: (clear) => set({ posClearCart: clear }),
-  setDayStatus: (status) => set({ dayStatus: status }),
-  setShiftStatus: (status) => set({ shiftStatus: status }),
-  setShiftInfo: (info) => set({
-    activeShiftId: info.shiftId,
-    activeCounterId: info.counterId,
-    activeCounterName: info.counterName,
-  }),
-  fetchShiftStatus: async () => {
-    try {
-      const res = await fetch('/api/counter-shifts/active');
-      const json = await res.json();
-      // API returns { success, data: { hasActiveShift, shift: {...} } }
-      const shift = json.data?.shift || null;
-      if (json.success && shift) {
-        set({
-          shiftStatus: shift.shiftStatus || 'Open',
-          activeShiftId: shift.id,
-          activeCounterId: shift.counterId,
-          activeCounterName: shift.counter?.name || null,
-        });
-      } else {
-        set({
-          shiftStatus: null,
-          activeShiftId: null,
-          activeCounterId: null,
-          activeCounterName: null,
-        });
-      }
-    } catch {
-      // Silently fail — don't block app on network error
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      currentPage: 'dashboard',
+      sidebarCollapsed: false,
+      sidebarOpen: false,
+      commandPaletteOpen: false,
+      posPreSearch: null,
+      posSelectCustomer: null,
+      posClearCart: false,
+      user: null,
+      dayStatus: null,
+      // Counter shift defaults
+      shiftStatus: null,
+      activeShiftId: null,
+      activeCounterId: null,
+      activeCounterName: null,
+      setUser: (user) => set({ user }),
+      setCurrentPage: (page) => set({ currentPage: page }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+      toggleSidebarOpen: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+      toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+      setPosPreSearch: (query) => set({ posPreSearch: query }),
+      setPosSelectCustomer: (id) => set({ posSelectCustomer: id }),
+      setPosClearCart: (clear) => set({ posClearCart: clear }),
+      setDayStatus: (status) => set({ dayStatus: status }),
+      setShiftStatus: (status) => set({ shiftStatus: status }),
+      setShiftInfo: (info) => set({
+        activeShiftId: info.shiftId,
+        activeCounterId: info.counterId,
+        activeCounterName: info.counterName,
+      }),
+      fetchShiftStatus: async () => {
+        try {
+          const res = await fetch('/api/counter-shifts/active');
+          const json = await res.json();
+          // API returns { success, data: { hasActiveShift, shift: {...} } }
+          const shift = json.data?.shift || null;
+          if (json.success && shift) {
+            set({
+              shiftStatus: shift.shiftStatus || 'Open',
+              activeShiftId: shift.id,
+              activeCounterId: shift.counterId,
+              activeCounterName: shift.counter?.name || null,
+            });
+          } else {
+            set({
+              shiftStatus: null,
+              activeShiftId: null,
+              activeCounterId: null,
+              activeCounterName: null,
+            });
+          }
+        } catch {
+          // Silently fail — don't block app on network error
+        }
+      },
+      fetchDayStatus: async () => {
+        try {
+          const res = await fetch('/api/day-close/status');
+          const json = await res.json();
+          if (json.success) {
+            set({ dayStatus: json.dayStatus });
+          }
+        } catch {
+          // Silently fail — don't block app on network error
+        }
+      },
+    }),
+    {
+      name: 'upharma-app-store',
+      // Only persist user + page + sidebar preferences across refresh
+      partialize: (state) => ({
+        user: state.user,
+        currentPage: state.currentPage,
+        sidebarCollapsed: state.sidebarCollapsed,
+      }),
     }
-  },
-  fetchDayStatus: async () => {
-    try {
-      const res = await fetch('/api/day-close/status');
-      const json = await res.json();
-      if (json.success) {
-        set({ dayStatus: json.dayStatus });
-      }
-    } catch {
-      // Silently fail — don't block app on network error
-    }
-  },
-}));
+  )
+);
