@@ -61,10 +61,6 @@ interface InvoiceData {
   customerName: string | null;
   doctorName: string | null;
   subtotal: number;
-  cgst: number;
-  sgst: number;
-  totalGst: number;
-  grandTotal: number;
   loyaltyPointsUsed: number;
   loyaltyPointsEarned: number;
   paymentMode: string;
@@ -74,11 +70,8 @@ interface InvoiceData {
     unitType: string;
     saleRate: number;
     mrp: number;
-    gstPercent: number;
     batchNo: string | null;
     expiryDate: string | null;
-    cgst: number;
-    sgst: number;
     total: number;
   }[];
   createdAt: string;
@@ -184,10 +177,6 @@ async function printSaleInvoice(sale: SaleRecord): Promise<void> {
     customerName: sale.customerName || sale.customer?.name || null,
     doctorName: null,
     subtotal: sale.subtotal,
-    cgst: sale.totalGst / 2,
-    sgst: sale.totalGst / 2,
-    totalGst: sale.totalGst,
-    grandTotal: sale.grandTotal,
     loyaltyPointsUsed: 0,
     loyaltyPointsEarned: 0,
     paymentMode: sale.paymentMode,
@@ -197,11 +186,8 @@ async function printSaleInvoice(sale: SaleRecord): Promise<void> {
       unitType: item.unitType,
       saleRate: item.saleRate,
       mrp: item.mrp,
-      gstPercent: item.gstPercent,
       batchNo: item.batchNo,
       expiryDate: item.expiryDate,
-      cgst: item.cgst,
-      sgst: item.sgst,
       total: item.total,
     })),
     createdAt: sale.createdAt,

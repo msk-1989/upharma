@@ -11,11 +11,8 @@ interface InvoiceItem {
   unitType: string;
   saleRate: number;
   mrp: number;
-  gstPercent: number;
   batchNo: string | null;
   expiryDate: string | null;
-  cgst: number;
-  sgst: number;
   total: number;
 }
 
@@ -24,10 +21,6 @@ interface InvoiceData {
   customerName: string | null;
   doctorName: string | null;
   subtotal: number;
-  cgst: number;
-  sgst: number;
-  totalGst: number;
-  grandTotal: number;
   loyaltyPointsUsed: number;
   loyaltyPointsEarned: number;
   paymentMode: string;
@@ -162,9 +155,8 @@ function buildInvoiceHTML(data: InvoiceData, store: typeof STORE_DEFAULTS): stri
     ).join('')
     : '';
 
-  const netAmt = data.subtotal + data.totalGst;
   const loyaltyDeduction = data.loyaltyPointsUsed > 0 ? data.loyaltyPointsUsed : 0;
-  const finalTotal = netAmt - loyaltyDeduction;
+  const finalTotal = data.subtotal - loyaltyDeduction;
 
   const inv = (copyLabel: string) => `
     <div style="width:100%;max-width:210mm;padding:6mm 8mm;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;line-height:1.4;page-break-inside:avoid;">
@@ -229,7 +221,7 @@ function buildInvoiceHTML(data: InvoiceData, store: typeof STORE_DEFAULTS): stri
             ${loyaltyDeduction > 0 ? `
             <tr>
               <td style="text-align:left;padding:1px 5px;color:#555;">Subtotal</td>
-              <td style="text-align:right;padding:1px 5px;font-weight:600;color:#333;">${fmtAmt(netAmt)}</td>
+              <td style="text-align:right;padding:1px 5px;font-weight:600;color:#333;">${fmtAmt(data.subtotal)}</td>
             </tr>
             <tr>
               <td style="text-align:left;padding:1px 5px;color:#b45309;">Loyalty Discount</td>
@@ -319,9 +311,8 @@ export async function printInvoiceNewWindow(data: InvoiceData): Promise<void> {
 
 function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: string }) {
   const store = getStore();
-  const netAmt = data.subtotal + data.totalGst;
   const loyaltyDeduction = data.loyaltyPointsUsed > 0 ? data.loyaltyPointsUsed : 0;
-  const finalTotal = netAmt - loyaltyDeduction;
+  const finalTotal = data.subtotal - loyaltyDeduction;
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -431,7 +422,7 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
             {loyaltyDeduction > 0 && (
               <tr>
                 <td style={{ textAlign: 'left', padding: '1px 5px', color: '#555' }}>Subtotal</td>
-                <td style={{ textAlign: 'right', padding: '1px 5px', fontWeight: 600, color: '#333' }}>{fmtAmt(netAmt)}</td>
+                <td style={{ textAlign: 'right', padding: '1px 5px', fontWeight: 600, color: '#333' }}>{fmtAmt(data.subtotal)}</td>
               </tr>
             )}
             {loyaltyDeduction > 0 && (
