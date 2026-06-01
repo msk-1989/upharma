@@ -53,7 +53,16 @@ export async function POST(request: NextRequest) {
       if (item.unitType === 'strip') qtySmallest = item.quantity * medicine.unitsPerStrip;
       else if (item.unitType === 'box') qtySmallest = item.quantity * medicine.stripsPerBox * medicine.unitsPerStrip;
 
-      const lineTotal = qtySmallest * item.purchaseRate;
+      // Calculate free quantity in smallest units (same unit conversion)
+      const freeQty = item.freeQuantity || 0;
+      let freeQtySmallest = freeQty;
+      if (item.unitType === 'strip') freeQtySmallest = freeQty * medicine.unitsPerStrip;
+      else if (item.unitType === 'box') freeQtySmallest = freeQty * medicine.stripsPerBox * medicine.unitsPerStrip;
+
+      // Total stock to add = purchased qty + free qty (scheme)
+      const totalStockQty = qtySmallest + freeQtySmallest;
+
+      const lineTotal = qtySmallest * item.purchaseRate; // Only paid qty contributes to cost
       const cgst = lineTotal * (medicine.gstPercent / 2) / 100;
       const sgst = cgst;
       subtotal += lineTotal;
@@ -73,16 +82,16 @@ export async function POST(request: NextRequest) {
           purchaseRate: item.purchaseRate,
           saleRate: medicine.saleRate,
           mrp: medicine.mrp,
-          stockQty: qtySmallest,
-          initialStock: qtySmallest,
+          stockQty: totalStockQty,
+          initialStock: totalStockQty,
           supplierId: supplierId,
           purchaseDate: new Date(),
           active: true,
         },
-        update: { stockQty: { increment: qtySmallest } },
+        update: { stockQty: { increment: totalStockQty } },
       });
 
-      // Create StockMovement record for audit trail
+      // Create StockMovement record for purchased qty
       await db.stockMovement.create({
         data: {
           medicineId: medicine.id,
@@ -95,6 +104,21 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Create StockMovement record for free qty (scheme)
+      if (freeQtySmallest > 0) {
+        await db.stockMovement.create({
+          data: {
+            medicineId: medicine.id,
+            batchId: batch.id,
+            type: 'IN',
+            quantity: freeQtySmallest,
+            reference: 'purchase',
+            notes: `Free Stock (Scheme) — Batch ${batchNo} — ${freeQty} ${item.unitType}(s) free`,
+            userId: userId || null,
+          },
+        });
+      }
+
       purchaseItemsData.push({
         purchaseId: '', // set after purchase creation
         medicineId: medicine.id,
@@ -102,6 +126,7 @@ export async function POST(request: NextRequest) {
         medicineName: medicine.name,
         batchNo,
         quantity: item.quantity,
+        freeQuantity: freeQty,
         unitType: item.unitType,
         purchaseRate: item.purchaseRate,
         gstPercent: medicine.gstPercent,

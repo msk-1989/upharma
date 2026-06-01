@@ -18,6 +18,7 @@ interface PurchaseItem {
   medicineId: string;
   medicineName?: string;
   quantity: number;
+  freeQuantity: number;
   unitType: 'tablet' | 'strip' | 'box';
   purchaseRate: number;
   batchNo: string;
@@ -188,6 +189,7 @@ export function PurchasesPage() {
       medicineId: '',
       medicineName: '',
       quantity: 1,
+      freeQuantity: 0,
       unitType: 'strip',
       purchaseRate: 0,
       batchNo: '',
@@ -234,6 +236,7 @@ export function PurchasesPage() {
         items: createItems.map(i => ({
           medicineId: i.medicineId,
           quantity: i.quantity,
+          freeQuantity: i.freeQuantity || 0,
           unitType: i.unitType,
           purchaseRate: i.purchaseRate,
           batchNo: i.batchNo,
@@ -599,12 +602,13 @@ export function PurchasesPage() {
               ) : (
                 <div className="border border-border rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="text-sm w-full" style={{ tableLayout: 'fixed', minWidth: '920px' }}>
+                    <table className="text-sm w-full" style={{ tableLayout: 'fixed', minWidth: '1050px' }}>
                       <thead>
                         <tr className="bg-gray-50 border-b border-border">
-                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '22%' }}>Medicine</th>
-                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '9%' }}>Qty</th>
-                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '11%' }}>Unit</th>
+                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '18%' }}>Medicine</th>
+                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '7%' }}>Qty</th>
+                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '8%' }}>Free Qty (Scheme)</th>
+                          <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '9%' }}>Unit</th>
                           <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '12%' }}>Rate (₹)</th>
                           <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '14%' }}>Batch No</th>
                           <th className="text-left text-xs font-medium text-gray-500 p-3" style={{ width: '16%' }}>Expiry Date</th>
@@ -664,6 +668,18 @@ export function PurchasesPage() {
                                 value={item.quantity || ''}
                                 onChange={(e) => updateItem(idx, { quantity: parseInt(e.target.value) || 0 })}
                                 className="h-10 text-sm text-right border-border/80 w-full"
+                              />
+                            </td>
+                            {/* Free Quantity (Scheme) */}
+                            <td className="p-2.5">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={item.freeQuantity || ''}
+                                placeholder="0"
+                                onChange={(e) => updateItem(idx, { freeQuantity: parseInt(e.target.value) || 0 })}
+                                className="h-10 text-sm text-right border-emerald-300 bg-emerald-50/50 w-full"
+                                title="Free quantity from supplier scheme (e.g. buy 100 get 20 free)"
                               />
                             </td>
                             {/* Unit Type */}
@@ -745,6 +761,12 @@ export function PurchasesPage() {
                       <span className="text-gray-600">Subtotal ({createItems.length} items)</span>
                       <span className="font-medium text-gray-900">{fmt(createTotals.subtotal)}</span>
                     </div>
+                    {createItems.some(i => i.freeQuantity > 0) && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-emerald-600 font-medium">Free Items (Scheme)</span>
+                        <span className="font-medium text-emerald-700">{createItems.reduce((a, i) => a + (i.freeQuantity || 0), 0)} units</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">CGST (6%)</span>
                       <span className="text-gray-700">{fmt(createTotals.cgst)}</span>
@@ -837,6 +859,7 @@ export function PurchasesPage() {
                               <th className="text-left text-xs font-medium text-gray-500 p-2.5">#</th>
                               <th className="text-left text-xs font-medium text-gray-500 p-2.5">Medicine</th>
                               <th className="text-center text-xs font-medium text-gray-500 p-2.5">Qty</th>
+                              <th className="text-center text-xs font-medium text-emerald-600 p-2.5">Free (Scheme)</th>
                               <th className="text-left text-xs font-medium text-gray-500 p-2.5">Unit</th>
                               <th className="text-right text-xs font-medium text-gray-500 p-2.5">Rate</th>
                               <th className="text-left text-xs font-medium text-gray-500 p-2.5">Batch No</th>
@@ -852,6 +875,13 @@ export function PurchasesPage() {
                                   <span className="text-sm font-medium text-gray-900">{item.medicineName || item.medicineId}</span>
                                 </td>
                                 <td className="p-2.5 text-center text-sm">{item.quantity}</td>
+                                <td className="p-2.5 text-center text-sm">
+                                  {item.freeQuantity > 0 ? (
+                                    <span className="text-emerald-600 font-semibold">+{item.freeQuantity}</span>
+                                  ) : (
+                                    <span className="text-gray-300">—</span>
+                                  )}
+                                </td>
                                 <td className="p-2.5">
                                   <Badge variant="secondary" className="text-xs capitalize">{item.unitType}</Badge>
                                 </td>
