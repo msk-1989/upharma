@@ -6,6 +6,7 @@ export type PageKey =
   | 'pos-billing'
   | 'sales-bills'
   | 'medicines'
+  | 'bulk-upload'
   | 'inventory'
   | 'purchases'
   | 'purchase-orders'
