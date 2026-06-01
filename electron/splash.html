@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline';" />
+  <title>uPharma</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 25%, #047857 50%, #059669 75%, #10b981 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #ffffff;
+    }
+
+    /* Decorative background circles */
+    .bg-circle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.08;
+      background: #ffffff;
+    }
+    .bg-circle:nth-child(1) { width: 400px; height: 400px; top: -100px; left: -100px; }
+    .bg-circle:nth-child(2) { width: 300px; height: 300px; bottom: -80px; right: -60px; }
+    .bg-circle:nth-child(3) { width: 200px; height: 200px; top: 50%; left: 60%; transform: translate(-50%, -50%); }
+
+    .splash-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Logo / pill icon */
+    .logo-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .logo-icon svg {
+      width: 48px;
+      height: 48px;
+      fill: #ffffff;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .app-name {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .app-name span {
+      color: #6ee7b7;
+    }
+
+    .tagline {
+      font-size: 13px;
+      opacity: 0.75;
+      font-weight: 400;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: -4px;
+    }
+
+    /* Spinner */
+    .spinner-container {
+      margin-top: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #6ee7b7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 13px;
+      opacity: 0.7;
+      font-weight: 300;
+    }
+
+    /* Version badge */
+    .version {
+      position: absolute;
+      bottom: 24px;
+      font-size: 11px;
+      opacity: 0.4;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Decorative circles -->
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+  <div class="bg-circle"></div>
+
+  <div class="splash-content">
+    <!-- Pill / cross icon -->
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6zm4 4h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+    </div>
+
+    <div class="app-name">u<span>Pharma</span></div>
+    <div class="tagline">Pharmacy Management System</div>
+
+    <div class="spinner-container">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading application…</div>
+    </div>
+  </div>
+
+  <div class="version">v1.0.0 &middot; MultiNex Multi Solutions LLP</div>
+
+</body>
+</html>

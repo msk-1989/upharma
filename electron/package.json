@@ -1,0 +1,59 @@
+{
+  "name": "upharma-desktop",
+  "version": "1.0.0",
+  "description": "uPharma Pharmacy Management - Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder",
+    "package": "electron-builder --win --x64"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "electron-is-dev": "^2.0.0",
+    "electron-store": "^10.0.0"
+  },
+  "devDependencies": {
+    "electron": "^34.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "productName": "uPharma",
+    "appId": "com.multinex.upharma.desktop",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "uPharma",
+      "uninstallDisplayName": "uPharma - Pharmacy Management",
+      "installerIcon": "assets/icon.png",
+      "uninstallerIcon": "assets/icon.png"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "ipc.js",
+      "tray.js",
+      "sync-engine.js",
+      "renderer-offline-bar.js",
+      "splash.html",
+      "assets/**/*"
+    ],
+    "extraMetadata": {
+      "main": "main.js"
+    }
+  }
+}

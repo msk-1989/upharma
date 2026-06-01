@@ -1,0 +1,8 @@
+# Build output
+release/
+
+# Dependencies
+node_modules/
+
+# Assets that are generated
+assets/icon.png
