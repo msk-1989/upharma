@@ -342,6 +342,82 @@ function registerIpcHandlers(opts = {}) {
     }
   });
 
+  // ================================================================
+  // Device Authentication
+  // ================================================================
+
+  ipcMain.handle('device-register', async () => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const result = await syncEngine.deviceAuth.register();
+      return { success: true, data: result };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('device-status', async () => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const deviceAuth = syncEngine.deviceAuth;
+      return {
+        success: true,
+        data: {
+          deviceId: deviceAuth.deviceId,
+          deviceName: deviceAuth.deviceName,
+          hasValidToken: deviceAuth.isTokenValid(),
+          tokenExpiresAt: deviceAuth.tokenExpiresAt,
+        },
+      };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  // ================================================================
+  // Pharmacy-Specific Features
+  // ================================================================
+
+  ipcMain.handle('offline-get-expiring-medicines', async (_event, daysThreshold) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const medicines = syncEngine.getExpiringMedicines(daysThreshold || 30);
+      return { success: true, data: medicines };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('offline-get-schedule-drugs', async (_event, scheduleType) => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const medicines = syncEngine.getScheduleDrugs(scheduleType || 'ScheduleH');
+      return { success: true, data: medicines };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('offline-get-low-stock-medicines', async () => {
+    if (!syncEngine || !syncEngine.isInitialized) {
+      return { error: 'SyncEngine not initialized' };
+    }
+    try {
+      const medicines = syncEngine.getLowStockMedicines();
+      return { success: true, data: medicines };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
   // Internal setter — called by the connectivity monitor in main.js
   return {
     setOnlineStatus(online) {

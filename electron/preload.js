@@ -76,6 +76,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resolveStockConflict: (conflictId, action) =>
     ipcRenderer.invoke('resolve-stock-conflict', conflictId, action),
 
+  // -------- Device Authentication --------
+  deviceRegister: () => ipcRenderer.invoke('device-register'),
+  deviceGetStatus: () => ipcRenderer.invoke('device-status'),
+
+  // -------- Pharmacy Features --------
+  offlineGetExpiringMedicines: (daysThreshold) => ipcRenderer.invoke('offline-get-expiring-medicines', daysThreshold),
+  offlineGetScheduleDrugs: (scheduleType) => ipcRenderer.invoke('offline-get-schedule-drugs', scheduleType),
+  offlineGetLowStockMedicines: () => ipcRenderer.invoke('offline-get-low-stock-medicines'),
+
   // -------- App info --------
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 

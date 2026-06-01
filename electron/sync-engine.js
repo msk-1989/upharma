@@ -38,6 +38,7 @@ const PENDING_TABLES = [
 ];
 const MAX_RETRIES = 5;
 const RETRY_BACKOFF_BASE_MS = 10000; // 10 seconds base, doubles each retry
+const FETCH_TIMEOUT_MS = 30000; // 30 seconds
 
 // ================================================================
 // Schema definitions for local SQLite tables
@@ -53,7 +54,8 @@ const SCHEMA_SQL = `
     lastPushAt TEXT,
     lastPullAt TEXT,
     totalPushCount INTEGER NOT NULL DEFAULT 0,
-    totalPullCount INTEGER NOT NULL DEFAULT 0
+    totalPullCount INTEGER NOT NULL DEFAULT 0,
+    terminal_code TEXT DEFAULT 'T01'
   );
 
   -- Local sales (offline-created sales)
@@ -195,6 +197,10 @@ const SCHEMA_SQL = `
     reorderLevel INTEGER DEFAULT 20,
     imageUrl TEXT,
     active INTEGER DEFAULT 1,
+    scheduleType TEXT DEFAULT 'OTC',
+    narcoticRegisterNo TEXT,
+    minAlertQty INTEGER DEFAULT 5,
+    maxAlertQty INTEGER DEFAULT 500,
     createdAt TEXT,
     updatedAt TEXT
   );
@@ -282,15 +288,18 @@ const SCHEMA_SQL = `
     synced_at TEXT,
     retry_count INTEGER NOT NULL DEFAULT 0,
     last_retry_at TEXT,
-    next_retry_at TEXT
+    next_retry_at TEXT,
+    sync_batch_id TEXT,
+    checksum TEXT
   );
 
-  -- Enterprise invoice sequences (STORECODE-YYYYMMDD-SEQ pattern)
+  -- Enterprise invoice sequences (STORECODE-TERM-YYYYMMDD-SEQ pattern)
   CREATE TABLE IF NOT EXISTS local_invoice_sequences (
     date TEXT NOT NULL,
     counter TEXT NOT NULL DEFAULT 'MAIN',
+    terminal_code TEXT NOT NULL DEFAULT 'T01',
     lastSequence INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (date, counter)
+    PRIMARY KEY (date, counter, terminal_code)
   );
 
   -- Stock conflict log for admin review
@@ -303,7 +312,8 @@ const SCHEMA_SQL = `
     serverStockAtSync INTEGER,
     conflictType TEXT NOT NULL,
     resolved INTEGER NOT NULL DEFAULT 0,
-    createdAt TEXT NOT NULL
+    createdAt TEXT NOT NULL,
+    synced INTEGER NOT NULL DEFAULT 0
   );
 
   -- Local users for offline authentication
@@ -313,6 +323,8 @@ const SCHEMA_SQL = `
     name TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'Cashier',
     pin TEXT,
+    pin_hash TEXT,
+    pin_salt TEXT,
     active INTEGER NOT NULL DEFAULT 1,
     createdAt TEXT,
     updatedAt TEXT
@@ -337,11 +349,13 @@ const SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_local_customers_synced ON local_customers(synced);
   CREATE INDEX IF NOT EXISTS idx_local_returns_synced ON local_returns(synced);
   CREATE INDEX IF NOT EXISTS idx_local_batches_medicineId ON local_batches(medicineId);
+  CREATE INDEX IF NOT EXISTS idx_local_batches_expiry ON local_batches(expiryDate);
   CREATE INDEX IF NOT EXISTS idx_local_medicines_name ON local_medicines(name);
   CREATE INDEX IF NOT EXISTS idx_local_medicines_barcode ON local_medicines(barcode);
   CREATE INDEX IF NOT EXISTS idx_sync_queue_synced ON sync_queue(synced);
   CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name);
   CREATE INDEX IF NOT EXISTS idx_sync_queue_retry ON sync_queue(synced, retry_count, next_retry_at);
+  CREATE INDEX IF NOT EXISTS idx_sync_queue_batch ON sync_queue(sync_batch_id);
   CREATE INDEX IF NOT EXISTS idx_stock_conflicts_resolved ON local_stock_conflicts(resolved);
   CREATE INDEX IF NOT EXISTS idx_local_audit_logs_synced ON local_audit_logs(synced);
   CREATE INDEX IF NOT EXISTS idx_local_audit_logs_timestamp ON local_audit_logs(timestamp);
@@ -363,6 +377,7 @@ class SyncEngine extends EventEmitter {
       dbPath: options.dbPath || null, // will default to userData
       authToken: options.authToken || null,
       syncApiKey: options.syncApiKey || 'upharma-sync-2026',
+      terminalCode: options.terminalCode || 'T01',
     };
     this.db = null;
     this.isInitialized = false;
@@ -434,6 +449,7 @@ class SyncEngine extends EventEmitter {
    * to tables that already exist.
    */
   _migrateSchema() {
+    // --- local_batches columns ---
     // Add stockOvercommitted to local_batches if missing
     try {
       this.db.exec('ALTER TABLE local_batches ADD COLUMN stockOvercommitted INTEGER DEFAULT 0');
@@ -448,21 +464,147 @@ class SyncEngine extends EventEmitter {
       // Column already exists — safe to ignore
     }
 
-    // Add retry columns to sync_queue if missing
+    // --- sync_queue columns ---
+    // Add retry_count if missing
     try {
       this.db.exec('ALTER TABLE sync_queue ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0');
     } catch (e) {
       // Column already exists
     }
+    // Add last_retry_at if missing
     try {
       this.db.exec('ALTER TABLE sync_queue ADD COLUMN last_retry_at TEXT');
     } catch (e) {
       // Column already exists
     }
+    // Add next_retry_at if missing
     try {
       this.db.exec('ALTER TABLE sync_queue ADD COLUMN next_retry_at TEXT');
     } catch (e) {
       // Column already exists
+    }
+    // Add sync_batch_id if missing
+    try {
+      this.db.exec('ALTER TABLE sync_queue ADD COLUMN sync_batch_id TEXT');
+    } catch (e) {
+      // Column already exists
+    }
+    // Add checksum if missing
+    try {
+      this.db.exec('ALTER TABLE sync_queue ADD COLUMN checksum TEXT');
+    } catch (e) {
+      // Column already exists
+    }
+
+    // Create index on sync_batch_id for existing DBs
+    try {
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_sync_queue_batch ON sync_queue(sync_batch_id)');
+    } catch (e) {
+      // Index creation failed — safe to ignore
+    }
+
+    // --- local_stock_conflicts: add synced column ---
+    try {
+      this.db.exec('ALTER TABLE local_stock_conflicts ADD COLUMN synced INTEGER NOT NULL DEFAULT 0');
+    } catch (e) {
+      // Column already exists — safe to ignore
+    }
+
+    // --- local_users: add pin_hash and pin_salt ---
+    try {
+      this.db.exec('ALTER TABLE local_users ADD COLUMN pin_hash TEXT');
+    } catch (e) {
+      // Column already exists
+    }
+    try {
+      this.db.exec('ALTER TABLE local_users ADD COLUMN pin_salt TEXT');
+    } catch (e) {
+      // Column already exists
+    }
+
+    // --- local_medicines: add pharmacy-specific fields ---
+    try {
+      this.db.exec('ALTER TABLE local_medicines ADD COLUMN scheduleType TEXT DEFAULT \'OTC\'');
+    } catch (e) {
+      // Column already exists
+    }
+    try {
+      this.db.exec('ALTER TABLE local_medicines ADD COLUMN narcoticRegisterNo TEXT');
+    } catch (e) {
+      // Column already exists
+    }
+    try {
+      this.db.exec('ALTER TABLE local_medicines ADD COLUMN minAlertQty INTEGER DEFAULT 5');
+    } catch (e) {
+      // Column already exists
+    }
+    try {
+      this.db.exec('ALTER TABLE local_medicines ADD COLUMN maxAlertQty INTEGER DEFAULT 500');
+    } catch (e) {
+      // Column already exists
+    }
+
+    // --- sync_meta: add terminal_code ---
+    try {
+      this.db.exec('ALTER TABLE sync_meta ADD COLUMN terminal_code TEXT DEFAULT \'T01\'');
+    } catch (e) {
+      // Column already exists
+    }
+
+    // --- local_invoice_sequences: add terminal_code column ---
+    // For existing DBs without terminal_code, we need to recreate the table
+    // since SQLite doesn't support altering PRIMARY KEY constraints.
+    // We handle this gracefully: the new schema uses the new PK, and the
+    // old data still works via INSERT OR REPLACE.
+    try {
+      this.db.exec('ALTER TABLE local_invoice_sequences ADD COLUMN terminal_code TEXT NOT NULL DEFAULT \'T01\'');
+    } catch (e) {
+      // Column already exists
+    }
+
+    // --- Create expiry index on local_batches ---
+    try {
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_local_batches_expiry ON local_batches(expiryDate)');
+    } catch (e) {
+      // Index creation failed — safe to ignore
+    }
+
+    // --- Migrate existing plain-text PINs to scrypt hashed format ---
+    this._migratePlainPinsToHashed();
+  }
+
+  /**
+   * Migrate existing users with plain-text PINs to scrypt hashed format.
+   * For each user that has a plain `pin` but no `pin_hash`, generate hash+salt.
+   */
+  _migratePlainPinsToHashed() {
+    if (!this.db) return;
+
+    try {
+      const usersWithPlainPin = this.db.prepare(
+        'SELECT id, pin FROM local_users WHERE pin IS NOT NULL AND pin != \'\' AND pin_hash IS NULL'
+      ).all();
+
+      if (usersWithPlainPin.length === 0) return;
+
+      console.log(`[SyncEngine] Migrating ${usersWithPlainPin.length} plain-text PINs to scrypt hashed format`);
+
+      const updateStmt = this.db.prepare(
+        'UPDATE local_users SET pin_hash = ?, pin_salt = ?, pin = NULL WHERE id = ?'
+      );
+
+      const migrateBatch = this.db.transaction((users) => {
+        for (const user of users) {
+          const salt = crypto.randomBytes(16).toString('hex');
+          const hash = this._hashPin(user.pin, salt);
+          updateStmt.run(hash, salt, user.id);
+        }
+      });
+
+      migrateBatch(usersWithPlainPin);
+      console.log('[SyncEngine] PIN migration completed successfully');
+    } catch (err) {
+      console.warn('[SyncEngine] PIN migration failed:', err.message);
     }
   }
 
@@ -503,12 +645,13 @@ class SyncEngine extends EventEmitter {
     const meta = this.db.prepare('SELECT * FROM sync_meta WHERE id = 1').get();
     if (!meta) {
       this.db.prepare(
-        'INSERT INTO sync_meta (id, deviceId, syncStatus) VALUES (1, ?, ?)'
-      ).run(this.options.deviceId, 'idle');
-    } else if (meta.deviceId !== this.options.deviceId) {
-      this.db.prepare('UPDATE sync_meta SET deviceId = ? WHERE id = 1').run(
-        this.options.deviceId
-      );
+        'INSERT INTO sync_meta (id, deviceId, syncStatus, terminal_code) VALUES (1, ?, ?, ?)'
+      ).run(this.options.deviceId, 'idle', this.options.terminalCode);
+    } else {
+      // Update deviceId and terminal code if changed
+      this.db.prepare(
+        'UPDATE sync_meta SET deviceId = ?, terminal_code = ? WHERE id = 1'
+      ).run(this.options.deviceId, this.options.terminalCode);
     }
   }
 
@@ -605,7 +748,7 @@ class SyncEngine extends EventEmitter {
   }
 
   // ================================================================
-  // Full Sync (Push then Pull)
+  // Full Sync (Push then Pull — consolidated single call)
   // ================================================================
 
   async fullSync() {
@@ -626,7 +769,7 @@ class SyncEngine extends EventEmitter {
     this.emit('sync-start', { timestamp: new Date().toISOString() });
 
     try {
-      // Phase 1: Push local changes to server
+      // Phase 1: Push local changes to server (server returns pull data in response)
       this.emit('sync-progress', {
         phase: 'push',
         message: 'Pushing local changes to server...',
@@ -640,14 +783,22 @@ class SyncEngine extends EventEmitter {
         progress: 40,
       });
 
-      // Phase 2: Pull server data to local
+      // Phase 2: Process pull data from the push response (no extra API call)
       this.emit('sync-progress', {
         phase: 'pull',
-        message: 'Pulling latest data from server...',
+        message: 'Processing server data...',
         progress: 50,
       });
 
-      const pullResult = await this.pullFromServer();
+      let pullResult;
+      if (pushResult.serverData) {
+        // Server returned pull data in the push response — process locally
+        pullResult = this._processPullData(pushResult);
+      } else {
+        // Fallback: make a separate pull call if server didn't return data
+        pullResult = await this.pullFromServer();
+      }
+
       this.emit('sync-progress', {
         phase: 'pull',
         message: `Pulled ${JSON.stringify(pullResult.pulled)} records`,
@@ -720,6 +871,7 @@ class SyncEngine extends EventEmitter {
   // ================================================================
   // Push: Read local changes → POST to server
   // Uses selective queue clearing and retry logic for reliability.
+  // Includes AbortController timeout for fetch.
   // ================================================================
 
   async pushToServer() {
@@ -728,51 +880,49 @@ class SyncEngine extends EventEmitter {
       'SELECT * FROM sync_queue WHERE synced = 0 AND (next_retry_at IS NULL OR next_retry_at <= ?) AND retry_count < ? ORDER BY created_at ASC'
     ).all(new Date().toISOString(), MAX_RETRIES);
 
-    // If nothing to push, return early
-    if (pendingItems.length === 0) {
-      return { pushed: {} };
-    }
+    // If nothing to push, still make a lightweight call to get pull data
+    const hasData = pendingItems.length > 0;
 
     // Collect unsynced records from all pending tables
-    const sales = this.db
+    const sales = hasData ? this.db
       .prepare('SELECT * FROM local_sales WHERE synced = 0')
       .all()
-      .map(stripSyncedField);
+      .map(stripSyncedField) : [];
 
-    const saleItems = this.db
+    const saleItems = hasData ? this.db
       .prepare('SELECT * FROM local_sale_items WHERE synced = 0')
       .all()
-      .map(stripSyncedField);
+      .map(stripSyncedField) : [];
 
-    const payments = this.db
+    const payments = hasData ? this.db
       .prepare('SELECT * FROM local_payments WHERE synced = 0')
       .all()
-      .map(stripSyncedField);
+      .map(stripSyncedField) : [];
 
-    const customers = this.db
+    const customers = hasData ? this.db
       .prepare('SELECT * FROM local_customers WHERE synced = 0')
       .all()
-      .map(stripSyncedField);
+      .map(stripSyncedField) : [];
 
-    const returns = this.db
+    const returns = hasData ? this.db
       .prepare('SELECT * FROM local_returns WHERE synced = 0')
       .all()
-      .map(stripSyncedField);
+      .map(stripSyncedField) : [];
 
-    const returnItems = this.db
+    const returnItems = hasData ? this.db
       .prepare('SELECT * FROM local_return_items')
-      .all();
+      .all() : [];
 
     // Include stock conflicts in the push payload
-    const stockConflicts = this.db
+    const stockConflicts = hasData ? this.db
       .prepare('SELECT * FROM local_stock_conflicts WHERE synced = 0')
-      .all();
+      .all() : [];
 
     // Include unsynced audit logs in the push payload
-    const auditLogs = this.db
+    const auditLogs = hasData ? this.db
       .prepare('SELECT * FROM local_audit_logs WHERE synced = 0')
       .all()
-      .map(stripSyncedField);
+      .map(stripSyncedField) : [];
 
     const lastSyncAt = await this.getLastSyncTimestamp();
 
@@ -810,11 +960,18 @@ class SyncEngine extends EventEmitter {
     err.phase = 'push';
 
     try {
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
       const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -848,6 +1005,12 @@ class SyncEngine extends EventEmitter {
         throw new Error(result.error || 'Server returned unsuccessful sync');
       }
     } catch (err2) {
+      if (err2.name === 'AbortError') {
+        const timeoutErr = new Error(`Push timed out after ${FETCH_TIMEOUT_MS / 1000}s`);
+        timeoutErr.phase = 'push';
+        this._handlePushFailure(pendingItems, timeoutErr);
+        throw timeoutErr;
+      }
       // On failure: increment retry_count and set next_retry_at for all pending items
       this._handlePushFailure(pendingItems, err2);
       err.message = err2.message || err.message;
@@ -856,63 +1019,77 @@ class SyncEngine extends EventEmitter {
   }
 
   /**
-   * Mark specific queue items as synced (selective clearing).
-   * Only marks items that were successfully pushed — leaves failures for retry.
+   * Process pull data locally from a server response object.
+   * Used when the server returns pull data in the push response,
+   * avoiding a separate API call.
    */
-  _markQueueItemsSynced(successfulIds) {
-    if (!successfulIds || successfulIds.length === 0) return;
-    const placeholders = successfulIds.map(() => '?').join(',');
-    this.db.prepare(
-      `UPDATE sync_queue SET synced = 1, synced_at = ? WHERE id IN (${placeholders})`
-    ).run(new Date().toISOString(), ...successfulIds);
-  }
+  _processPullData(serverResult) {
+    if (!serverResult || !serverResult.serverData) {
+      return { syncTimestamp: null, pulled: {}, conflicts: [] };
+    }
 
-  /**
-   * Handle push failure: increment retry count and calculate next retry time
-   * using exponential backoff.
-   */
-  _handlePushFailure(failedItems, err) {
-    if (!failedItems || failedItems.length === 0) return;
+    const serverData = serverResult.serverData;
 
-    const now = new Date().toISOString();
-    const stmt = this.db.prepare(
-      'UPDATE sync_queue SET retry_count = retry_count + 1, last_retry_at = ?, next_retry_at = ? WHERE id = ?'
-    );
+    // Upsert reference data (server wins — full replace for caches)
+    if (serverData.medicines && serverData.medicines.length > 0) {
+      this._bulkUpsert('local_medicines', serverData.medicines);
+    }
+    // Use _mergeBatches instead of _bulkUpsert to preserve overcommitted stock
+    if (serverData.medicineBatches && serverData.medicineBatches.length > 0) {
+      this._mergeBatches(serverData.medicineBatches);
+    }
+    if (serverData.suppliers && serverData.suppliers.length > 0) {
+      this._bulkUpsert('local_suppliers', serverData.suppliers);
+    }
+    if (serverData.settings && serverData.settings.length > 0) {
+      this._bulkUpsert('local_settings', serverData.settings);
+    }
+    if (serverData.purchases && serverData.purchases.length > 0) {
+      this._bulkUpsert('local_purchases', serverData.purchases);
+    }
 
-    const batch = this.db.transaction((items) => {
-      for (const item of items) {
-        const newRetryCount = (item.retry_count || 0) + 1;
-        if (newRetryCount >= MAX_RETRIES) {
-          // Max retries exceeded — mark as permanently failed but keep in queue
-          console.error(`[SyncEngine] Max retries exceeded for queue item ${item.id} (${item.table_name}/${item.record_id})`);
-        }
-        // Exponential backoff: base * 2^(retry_count-1)
-        const backoffMs = RETRY_BACKOFF_BASE_MS * Math.pow(2, newRetryCount - 1);
-        const nextRetry = new Date(Date.now() + backoffMs).toISOString();
-        stmt.run(now, nextRetry, item.id);
-      }
-    });
+    // Cache users from server for offline authentication (Fix 6)
+    if (serverData.users && serverData.users.length > 0) {
+      this.cacheUsers(serverData.users);
+    }
 
-    batch(failedItems);
-    console.warn(`[SyncEngine] Push failed for ${failedItems.length} queue items — will retry with backoff. Error: ${err.message}`);
-  }
+    // Upsert customers (merge — server wins for existing, add new)
+    if (serverData.customers && serverData.customers.length > 0) {
+      this._bulkUpsert('local_customers', serverData.customers);
+    }
 
-  _markRecordsSynced(tableName, records) {
-    if (!records || records.length === 0) return;
-    const stmt = this.db.prepare(`UPDATE ${tableName} SET synced = 1 WHERE id = ?`);
-    const batch = this.db.transaction((items) => {
-      for (const item of items) {
-        stmt.run(item.id);
-      }
-    });
-    batch(records);
+    // Upsert sales (merge — add new ones, keep existing local ones that are unsynced)
+    if (serverData.sales && serverData.sales.length > 0) {
+      this._bulkUpsert('local_sales', serverData.sales);
+    }
+
+    // Upsert sale items
+    if (serverData.saleItems && serverData.saleItems.length > 0) {
+      this._bulkUpsert('local_sale_items', serverData.saleItems);
+    }
+
+    // Resolve stock conflicts after pull (Fix 1)
+    this.resolveStockConflicts();
+
+    return {
+      syncTimestamp: serverResult.syncTimestamp,
+      pulled: serverResult.syncReport ? serverResult.syncReport.pulled : {},
+      conflicts: serverResult.syncReport ? (serverResult.syncReport.conflicts || []) : [],
+    };
   }
 
   // ================================================================
   // Pull: GET from server → Upsert into local SQLite
+  // Accepts optional pre-fetched server result to avoid extra API call.
   // ================================================================
 
-  async pullFromServer() {
+  async pullFromServer(serverResult) {
+    // If a server result was passed (from pushToServer), process it locally
+    if (serverResult) {
+      return this._processPullData(serverResult);
+    }
+
+    // Otherwise, make a separate pull call to the server
     const lastSyncAt = await this.getLastSyncTimestamp();
 
     const url = `${this.options.apiBase}/api/sync`;
@@ -939,11 +1116,18 @@ class SyncEngine extends EventEmitter {
     err.phase = 'pull';
 
     try {
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
       const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -956,60 +1140,23 @@ class SyncEngine extends EventEmitter {
         throw new Error(result.error || 'Server returned unsuccessful sync');
       }
 
-      const serverData = result.serverData;
-
-      // Upsert reference data (server wins — full replace for caches)
-      if (serverData.medicines && serverData.medicines.length > 0) {
-        this._bulkReplace('local_medicines', serverData.medicines);
-      }
-      if (serverData.medicineBatches && serverData.medicineBatches.length > 0) {
-        this._bulkReplace('local_batches', serverData.medicineBatches);
-      }
-      if (serverData.suppliers && serverData.suppliers.length > 0) {
-        this._bulkReplace('local_suppliers', serverData.suppliers);
-      }
-      if (serverData.settings && serverData.settings.length > 0) {
-        this._bulkReplace('local_settings', serverData.settings);
-      }
-      if (serverData.purchases && serverData.purchases.length > 0) {
-        this._bulkReplace('local_purchases', serverData.purchases);
-      }
-
-      // Cache users from server for offline authentication (Fix 6)
-      if (serverData.users && serverData.users.length > 0) {
-        this.cacheUsers(serverData.users);
-      }
-
-      // Upsert customers (merge — server wins for existing, add new)
-      if (serverData.customers && serverData.customers.length > 0) {
-        this._bulkUpsert('local_customers', serverData.customers);
-      }
-
-      // Upsert sales (merge — add new ones, keep existing local ones that are unsynced)
-      if (serverData.sales && serverData.sales.length > 0) {
-        this._bulkUpsertSales(serverData.sales);
-      }
-
-      // Upsert sale items
-      if (serverData.saleItems && serverData.saleItems.length > 0) {
-        this._bulkUpsert('local_sale_items', serverData.saleItems);
-      }
-
-      // Resolve stock conflicts after pull (Fix 1)
-      this.resolveStockConflicts();
-
-      return {
-        syncTimestamp: result.syncTimestamp,
-        pulled: result.syncReport.pulled,
-        conflicts: result.syncReport.conflicts || [],
-      };
+      return this._processPullData(result);
     } catch (err2) {
+      if (err2.name === 'AbortError') {
+        const timeoutErr = new Error(`Pull timed out after ${FETCH_TIMEOUT_MS / 1000}s`);
+        timeoutErr.phase = 'pull';
+        throw timeoutErr;
+      }
       err.message = err2.message || err.message;
       throw err;
     }
   }
 
-  _bulkReplace(tableName, records) {
+  /**
+   * Bulk upsert: INSERT OR REPLACE for any table.
+   * Consolidated from _bulkReplace, _bulkUpsert, and _bulkUpsertSales.
+   */
+  _bulkUpsert(tableName, records) {
     if (!records || records.length === 0) return;
 
     // Get column info from first record
@@ -1032,45 +1179,98 @@ class SyncEngine extends EventEmitter {
     batch(records);
   }
 
-  _bulkUpsert(tableName, records) {
-    if (!records || records.length === 0) return;
+  /**
+   * Merge server batches into local batches intelligently.
+   * - For batches where stockOvercommitted = 1 locally, preserves local stockQty and flags
+   * - For normal batches, uses server data
+   * - Always preserves stockOvercommitted and version from local if they were modified
+   */
+  _mergeBatches(serverBatches) {
+    if (!serverBatches || serverBatches.length === 0) return;
 
-    const columns = Object.keys(records[0]);
-    const placeholders = columns.map(() => '?').join(', ');
-    const columnList = columns.join(', ');
-    const stmt = this.db.prepare(
-      `INSERT OR REPLACE INTO ${tableName} (${columnList}) VALUES (${placeholders})`
-    );
+    const upsertStmt = this.db.prepare(`
+      INSERT OR REPLACE INTO local_batches (
+        id, medicineId, batchNo, expiryDate, purchaseRate, saleRate, mrp,
+        stockQty, initialStock, supplierId, purchaseDate, rackId, active,
+        createdAt, updatedAt, stockOvercommitted, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
     const batch = this.db.transaction((items) => {
-      for (const item of items) {
-        const values = columns.map((col) => item[col] ?? null);
-        stmt.run(...values);
+      for (const serverBatch of items) {
+        // Check if we have a local version with overcommitted stock
+        const localBatch = this.db.prepare(
+          'SELECT stockQty, stockOvercommitted, version FROM local_batches WHERE id = ?'
+        ).get(serverBatch.id);
+
+        if (localBatch && localBatch.stockOvercommitted === 1) {
+          // Preserve local stockQty and overcommitted flags, use server data for everything else
+          upsertStmt.run(
+            serverBatch.id,
+            serverBatch.medicineId,
+            serverBatch.batchNo,
+            serverBatch.expiryDate || null,
+            serverBatch.purchaseRate || 0,
+            serverBatch.saleRate || 0,
+            serverBatch.mrp || 0,
+            localBatch.stockQty,  // PRESERVED: local decremented stock
+            serverBatch.initialStock || 0,
+            serverBatch.supplierId || null,
+            serverBatch.purchaseDate || null,
+            serverBatch.rackId || null,
+            serverBatch.active !== undefined ? (serverBatch.active ? 1 : 0) : 1,
+            serverBatch.createdAt || null,
+            serverBatch.updatedAt || new Date().toISOString(),
+            1,  // PRESERVED: stockOvercommitted flag
+            localBatch.version  // PRESERVED: local version (higher due to offline changes)
+          );
+        } else if (localBatch && localBatch.version > (serverBatch.version || 0)) {
+          // Local version is newer — preserve local version but take server stockQty
+          upsertStmt.run(
+            serverBatch.id,
+            serverBatch.medicineId,
+            serverBatch.batchNo,
+            serverBatch.expiryDate || null,
+            serverBatch.purchaseRate || 0,
+            serverBatch.saleRate || 0,
+            serverBatch.mrp || 0,
+            serverBatch.stockQty || 0,
+            serverBatch.initialStock || 0,
+            serverBatch.supplierId || null,
+            serverBatch.purchaseDate || null,
+            serverBatch.rackId || null,
+            serverBatch.active !== undefined ? (serverBatch.active ? 1 : 0) : 1,
+            serverBatch.createdAt || null,
+            serverBatch.updatedAt || new Date().toISOString(),
+            localBatch.stockOvercommitted || 0,
+            localBatch.version  // PRESERVED: local version
+          );
+        } else {
+          // Normal case: use server data entirely
+          upsertStmt.run(
+            serverBatch.id,
+            serverBatch.medicineId,
+            serverBatch.batchNo,
+            serverBatch.expiryDate || null,
+            serverBatch.purchaseRate || 0,
+            serverBatch.saleRate || 0,
+            serverBatch.mrp || 0,
+            serverBatch.stockQty || 0,
+            serverBatch.initialStock || 0,
+            serverBatch.supplierId || null,
+            serverBatch.purchaseDate || null,
+            serverBatch.rackId || null,
+            serverBatch.active !== undefined ? (serverBatch.active ? 1 : 0) : 1,
+            serverBatch.createdAt || null,
+            serverBatch.updatedAt || new Date().toISOString(),
+            serverBatch.stockOvercommitted || 0,
+            serverBatch.version || 1
+          );
+        }
       }
     });
 
-    batch(records);
-  }
-
-  _bulkUpsertSales(records) {
-    if (!records || records.length === 0) return;
-
-    const columns = Object.keys(records[0]);
-    const placeholders = columns.map(() => '?').join(', ');
-    const columnList = columns.join(', ');
-
-    const stmt = this.db.prepare(
-      `INSERT OR REPLACE INTO local_sales (${columnList}) VALUES (${placeholders})`
-    );
-
-    const batch = this.db.transaction((items) => {
-      for (const item of items) {
-        const values = columns.map((col) => item[col] ?? null);
-        stmt.run(...values);
-      }
-    });
-
-    batch(records);
+    batch(serverBatches);
   }
 
   // ================================================================
@@ -1158,12 +1358,14 @@ class SyncEngine extends EventEmitter {
   }
 
   // ================================================================
-  // Invoice Numbering — Enterprise Pattern (Fix 2)
+  // Invoice Numbering — Enterprise Pattern with Terminal Code
+  // Format: STORECODE-TERM-YYYYMMDD-SEQ
+  // Example: UPH-T01-20260601-0001
   // ================================================================
 
   /**
-   * Generate an invoice number in the format: STORECODE-YYYYMMDD-SEQ
-   * Example: UPH-20260601-0001
+   * Generate an invoice number in the format: STORECODE-TERM-YYYYMMDD-SEQ
+   * Example: UPH-T01-20260601-0001
    * Uses a local sequence table to ensure uniqueness even offline.
    */
   generateInvoiceNo(counterCode) {
@@ -1175,18 +1377,20 @@ class SyncEngine extends EventEmitter {
       String(now.getMonth() + 1).padStart(2, '0') +
       String(now.getDate()).padStart(2, '0');
 
+    const terminalCode = this._getTerminalCode();
+
     const row = this.db.prepare(
-      'SELECT lastSequence FROM local_invoice_sequences WHERE date = ? AND counter = ?'
-    ).get(date, counterCode);
+      'SELECT lastSequence FROM local_invoice_sequences WHERE date = ? AND counter = ? AND terminal_code = ?'
+    ).get(date, counterCode, terminalCode);
 
     const nextSeq = (row ? row.lastSequence : 0) + 1;
 
     this.db.prepare(
-      'INSERT OR REPLACE INTO local_invoice_sequences (date, counter, lastSequence) VALUES (?, ?, ?)'
-    ).run(date, counterCode, nextSeq);
+      'INSERT OR REPLACE INTO local_invoice_sequences (date, counter, terminal_code, lastSequence) VALUES (?, ?, ?, ?)'
+    ).run(date, counterCode, terminalCode, nextSeq);
 
     const storeCode = this._getStoreCode();
-    return `${storeCode}-${date}-${String(nextSeq).padStart(4, '0')}`;
+    return `${storeCode}-${terminalCode}-${date}-${String(nextSeq).padStart(4, '0')}`;
   }
 
   /**
@@ -1201,6 +1405,55 @@ class SyncEngine extends EventEmitter {
       return (row && row.value) ? row.value : 'UPH';
     } catch (e) {
       return 'UPH';
+    }
+  }
+
+  /**
+   * Get the terminal code. Uses constructor option or falls back to sync_meta.
+   */
+  _getTerminalCode() {
+    if (this.options.terminalCode) return this.options.terminalCode;
+    if (!this.db) return 'T01';
+    try {
+      const row = this.db.prepare(
+        "SELECT terminal_code FROM sync_meta WHERE id = 1"
+      ).get();
+      return (row && row.terminal_code) ? row.terminal_code : 'T01';
+    } catch (e) {
+      return 'T01';
+    }
+  }
+
+  // ================================================================
+  // PIN Hashing (scrypt) — Security Improvement
+  // ================================================================
+
+  /**
+   * Hash a PIN using scrypt with the given salt.
+   * Returns a hex-encoded 64-byte hash.
+   */
+  _hashPin(pin, salt) {
+    const saltBuffer = Buffer.from(salt, 'hex');
+    const hash = crypto.scryptSync(pin, saltBuffer, 64);
+    return hash.toString('hex');
+  }
+
+  /**
+   * Verify a PIN against a stored scrypt hash using timing-safe comparison.
+   * Returns true if the PIN matches the hash.
+   */
+  _verifyPin(pin, storedHash, salt) {
+    if (!pin || !storedHash || !salt) return false;
+    try {
+      const computedHash = this._hashPin(pin, salt);
+      const a = Buffer.from(computedHash, 'hex');
+      const b = Buffer.from(storedHash, 'hex');
+      // Use timingSafeEqual to prevent timing attacks
+      if (a.length !== b.length) return false;
+      return crypto.timingSafeEqual(a, b);
+    } catch (err) {
+      console.warn('[SyncEngine] PIN verification error:', err.message);
+      return false;
     }
   }
 
@@ -1252,6 +1505,9 @@ class SyncEngine extends EventEmitter {
     this.db.prepare(
       `INSERT INTO local_sales (${columns.join(', ')}) VALUES (${placeholders})`
     ).run(...columns.map((c) => saleRecord[c]));
+
+    // Generate a sync_batch_id for grouping sale + items in sync queue
+    const syncBatchId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
     // Insert sale items
     if (saleData.items && saleData.items.length > 0) {
@@ -1320,8 +1576,8 @@ class SyncEngine extends EventEmitter {
       batchInsert(saleData.payments);
     }
 
-    // Add to sync queue
-    this._addToSyncQueue('local_sales', 'INSERT', id, saleRecord);
+    // Add to sync queue with batch ID for grouping
+    this._addToSyncQueue('local_sales', 'INSERT', id, saleRecord, syncBatchId);
 
     // Log sale creation in audit trail
     if (saleData.userId) {
@@ -1436,20 +1692,44 @@ class SyncEngine extends EventEmitter {
   }
 
   // ================================================================
-  // Offline User Authentication (Fix 4)
+  // Offline User Authentication (Fix 5 — username-first + scrypt)
   // ================================================================
 
   /**
-   * Authenticate a user offline using username/PIN.
-   * Returns the user record if found and active, null otherwise.
+   * Authenticate a user offline using username and PIN.
+   * SECURITY: Requires username first (not PIN-only), then verifies PIN.
+   * Supports both scrypt-hashed PINs and legacy plain-text PINs.
+   * Returns the user record (without sensitive fields) if found and active, null otherwise.
    */
   offlineLogin(username, pin) {
     if (!this.db) return null;
     try {
+      // SECURITY FIX: Look up by username only — NOT by PIN
       const user = this.db.prepare(
-        'SELECT * FROM local_users WHERE (username = ? OR pin = ?) AND active = 1'
-      ).get(username, pin);
-      return user || null;
+        'SELECT * FROM local_users WHERE username = ? AND active = 1'
+      ).get(username);
+
+      if (!user) return null;
+
+      // Verify PIN
+      if (user.pin_hash && user.pin_salt) {
+        // Modern path: scrypt hashed PIN
+        if (!this._verifyPin(pin, user.pin_hash, user.pin_salt)) {
+          return null;
+        }
+      } else if (user.pin) {
+        // Legacy path: plain-text PIN (migration should have converted these)
+        if (pin !== user.pin) {
+          return null;
+        }
+      } else {
+        // No PIN set — deny login
+        return null;
+      }
+
+      // Return user record without sensitive fields
+      const { pin: _p, pin_hash: _ph, pin_salt: _ps, ...safeUser } = user;
+      return safeUser;
     } catch (err) {
       console.warn('[SyncEngine] Offline login failed:', err.message);
       return null;
@@ -1459,24 +1739,44 @@ class SyncEngine extends EventEmitter {
   /**
    * Cache users from the server during pull.
    * Performs a bulk replace so the local user cache always matches server.
+   * PINs are hashed with scrypt before storage for security.
    */
   cacheUsers(users) {
     if (!this.db || !users || users.length === 0) return;
 
     try {
-      // Transform user records to match local schema
-      const mappedUsers = users.map((u) => ({
-        id: u.id,
-        username: u.username,
-        name: u.name,
-        role: u.role || 'Cashier',
-        pin: u.pin || null,
-        active: u.active !== undefined ? (u.active ? 1 : 0) : 1,
-        createdAt: u.createdAt || new Date().toISOString(),
-        updatedAt: u.updatedAt || new Date().toISOString(),
-      }));
+      // Transform user records to match local schema, hash PINs
+      const mappedUsers = users.map((u) => {
+        let pinHash = null;
+        let pinSalt = null;
+        let plainPin = null;
 
-      this._bulkReplace('local_users', mappedUsers);
+        if (u.pin_hash && u.pin_salt) {
+          // User already has a scrypt hash from server
+          pinHash = u.pin_hash;
+          pinSalt = u.pin_salt;
+        } else if (u.pin) {
+          // Hash the PIN with scrypt before storing locally
+          pinSalt = crypto.randomBytes(16).toString('hex');
+          pinHash = this._hashPin(u.pin, pinSalt);
+          // Keep plain pin as null — we only store hashed
+        }
+
+        return {
+          id: u.id,
+          username: u.username,
+          name: u.name,
+          role: u.role || 'Cashier',
+          pin: plainPin,
+          pin_hash: pinHash,
+          pin_salt: pinSalt,
+          active: u.active !== undefined ? (u.active ? 1 : 0) : 1,
+          createdAt: u.createdAt || new Date().toISOString(),
+          updatedAt: u.updatedAt || new Date().toISOString(),
+        };
+      });
+
+      this._bulkUpsert('local_users', mappedUsers);
       console.log(`[SyncEngine] Cached ${mappedUsers.length} users for offline authentication`);
     } catch (err) {
       console.warn('[SyncEngine] Failed to cache users:', err.message);
@@ -1567,9 +1867,10 @@ class SyncEngine extends EventEmitter {
   getMedicines(searchTerm) {
     if (!this.db) return [];
     if (searchTerm) {
+      // FIX: Added parentheses around OR conditions for correct operator precedence
       return this.db
         .prepare(
-          "SELECT * FROM local_medicines WHERE name LIKE ? OR barcode LIKE ? OR genericName LIKE ? AND active = 1 ORDER BY name ASC"
+          "SELECT * FROM local_medicines WHERE (name LIKE ? OR barcode LIKE ? OR genericName LIKE ?) AND active = 1 ORDER BY name ASC"
         )
         .all(`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`);
     }
@@ -1589,9 +1890,10 @@ class SyncEngine extends EventEmitter {
   getCustomers(searchTerm) {
     if (!this.db) return [];
     if (searchTerm) {
+      // FIX: Added parentheses around OR conditions for correct operator precedence
       return this.db
         .prepare(
-          "SELECT * FROM local_customers WHERE name LIKE ? OR phone LIKE ? AND active = 1 ORDER BY name ASC"
+          "SELECT * FROM local_customers WHERE (name LIKE ? OR phone LIKE ?) AND active = 1 ORDER BY name ASC"
         )
         .all(`%${searchTerm}%`, `%${searchTerm}%`);
     }
@@ -1676,14 +1978,79 @@ class SyncEngine extends EventEmitter {
   }
 
   // ================================================================
+  // Pharmacy-Specific Features
+  // ================================================================
+
+  /**
+   * Get medicines with batches expiring within N days.
+   * @param {number} daysThreshold - Number of days threshold (default 30)
+   * @returns {Array} Array of medicines with expiring batches
+   */
+  getExpiringMedicines(daysThreshold = 30) {
+    if (!this.db) return [];
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
+    const threshold = thresholdDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    return this.db.prepare(`
+      SELECT DISTINCT m.*,
+        b.id as batchId, b.batchNo, b.expiryDate, b.stockQty, b.saleRate, b.mrp
+      FROM local_medicines m
+      INNER JOIN local_batches b ON b.medicineId = m.id
+      WHERE b.expiryDate IS NOT NULL
+        AND b.expiryDate <= ?
+        AND b.expiryDate >= date('now')
+        AND b.stockQty > 0
+        AND b.active = 1
+        AND m.active = 1
+      ORDER BY b.expiryDate ASC, m.name ASC
+    `).all(threshold);
+  }
+
+  /**
+   * Get all medicines of a specific schedule type.
+   * @param {string} scheduleType - OTC, ScheduleH, ScheduleH1, or Narcotic
+   * @returns {Array} Array of medicines matching the schedule type
+   */
+  getScheduleDrugs(scheduleType) {
+    if (!this.db) return [];
+    return this.db.prepare(`
+      SELECT * FROM local_medicines
+      WHERE scheduleType = ? AND active = 1
+      ORDER BY name ASC
+    `).all(scheduleType);
+  }
+
+  /**
+   * Get medicines where total stock across batches is below reorder level.
+   * @returns {Array} Array of medicines with low stock
+   */
+  getLowStockMedicines() {
+    if (!this.db) return [];
+    return this.db.prepare(`
+      SELECT m.*,
+        COALESCE(SUM(b.stockQty), 0) as totalStock
+      FROM local_medicines m
+      LEFT JOIN local_batches b ON b.medicineId = m.id AND b.active = 1
+      WHERE m.active = 1
+      GROUP BY m.id
+      HAVING totalStock < m.reorderLevel
+      ORDER BY totalStock ASC, m.name ASC
+    `).all();
+  }
+
+  // ================================================================
   // Sync Queue Management
   // ================================================================
 
-  _addToSyncQueue(tableName, operation, recordId, data) {
+  _addToSyncQueue(tableName, operation, recordId, data, syncBatchId) {
     try {
+      const checksum = data ? crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex') : null;
+      const batchId = syncBatchId || null;
+
       this.db.prepare(
-        'INSERT INTO sync_queue (table_name, operation, record_id, data_json) VALUES (?, ?, ?, ?)'
-      ).run(tableName, operation, recordId, JSON.stringify(data));
+        'INSERT INTO sync_queue (table_name, operation, record_id, data_json, sync_batch_id, checksum) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run(tableName, operation, recordId, JSON.stringify(data), batchId, checksum);
     } catch (err) {
       console.warn('[SyncEngine] Failed to add to sync queue:', err.message);
     }
