@@ -17,6 +17,7 @@ import {
   Receipt,
   Loader2,
   FileText,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -357,8 +358,11 @@ export function SalesHistoryPage() {
 
   // ==================== FETCH SALES ====================
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const fetchSales = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams();
       if (dateFrom) params.set('from', dateFrom);
@@ -366,20 +370,31 @@ export function SalesHistoryPage() {
       if (paymentFilter !== 'all') params.set('payment', paymentFilter);
 
       const res = await fetch(`/api/sales/history?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.error || `Server error (${res.status})`;
+        console.error('[Sales History] API error:', res.status, errMsg);
+        setFetchError(errMsg);
+        toast({ title: 'Error loading sales', description: errMsg, variant: 'destructive' });
+        setSales([]);
+        return;
+      }
       const data = await res.json();
 
       if (data.success) {
         setSales(data.data || []);
         setTotalCount(data.data?.length || 0);
         setCurrentPage(1);
+      } else {
+        console.error('[Sales History] Unexpected response:', data);
+        setSales([]);
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load sales history',
-        variant: 'destructive',
-      });
+      const msg = err instanceof Error ? err.message : 'Network error';
+      console.error('[Sales History] Fetch error:', msg);
+      setFetchError(msg);
+      toast({ title: 'Error loading sales', description: msg, variant: 'destructive' });
+      setSales([]);
     } finally {
       setLoading(false);
     }
@@ -650,6 +665,17 @@ export function SalesHistoryPage() {
                     <td colSpan={10} className="px-4 py-12 text-center">
                       <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-2" />
                       <p className="text-sm text-gray-500">Loading sales bills...</p>
+                    </td>
+                  </tr>
+                ) : fetchError ? (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-12 text-center">
+                      <AlertCircle className="w-10 h-10 text-red-300 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-red-600">Failed to load sales</p>
+                      <p className="text-xs text-red-500 max-w-md mx-auto mt-1">{fetchError}</p>
+                      <Button variant="outline" size="sm" className="mt-2 gap-1.5" onClick={fetchSales}>
+                        <Download className="w-3.5 h-3.5" /> Retry
+                      </Button>
                     </td>
                   </tr>
                 ) : paginatedSales.length === 0 ? (

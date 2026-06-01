@@ -14,6 +14,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: purchases });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[API /api/purchases GET] Error:', error);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -167,6 +168,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: purchase }, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[API /api/purchases POST] Error:', error);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

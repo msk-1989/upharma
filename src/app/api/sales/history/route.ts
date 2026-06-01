@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Sales history error:', error);
+    console.error('[API /api/sales/history GET] Error:', error);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

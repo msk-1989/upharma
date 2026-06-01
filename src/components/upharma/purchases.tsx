@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Truck, Plus, Eye, Search, Filter, X, CalendarDays, IndianRupee, Package, Clock, Users, ChevronDown } from 'lucide-react';
+import { Truck, Plus, Eye, Search, Filter, X, CalendarDays, IndianRupee, Package, Clock, Users, ChevronDown, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -107,8 +108,11 @@ export function PurchasesPage() {
 
   // ─── Fetch Data ──────────────────────────────────────────────────────────
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const fetchPurchases = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams();
       if (filterSupplier) params.set('supplierId', filterSupplier);
@@ -117,11 +121,27 @@ export function PurchasesPage() {
       if (filterDateTo) params.set('dateTo', filterDateTo);
       if (search) params.set('search', search);
       const res = await fetch(`/api/purchases?${params}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.error || `Server error (${res.status})`;
+        console.error('[Purchases] API error:', res.status, errMsg);
+        setFetchError(errMsg);
+        toast({ title: 'Error loading purchases', description: errMsg, variant: 'destructive' });
+        setPurchases([]);
+        return;
+      }
       const data = await res.json();
       if (data.success) setPurchases(data.data || []);
       else if (Array.isArray(data)) setPurchases(data);
-      else setPurchases([]);
-    } catch {
+      else {
+        console.error('[Purchases] Unexpected response:', data);
+        setPurchases([]);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error';
+      console.error('[Purchases] Fetch error:', msg);
+      setFetchError(msg);
+      toast({ title: 'Error loading purchases', description: msg, variant: 'destructive' });
       setPurchases([]);
     }
     setLoading(false);
@@ -475,6 +495,19 @@ export function PurchasesPage() {
                       <td colSpan={11} className="p-4 text-center text-gray-400 animate-pulse">Loading purchases...</td>
                     </tr>
                   ))
+                ) : fetchError ? (
+                  <tr>
+                    <td colSpan={11} className="p-12 text-center">
+                      <div className="flex flex-col items-center gap-2 text-red-400">
+                        <AlertCircle className="w-10 h-10 opacity-60" />
+                        <p className="text-sm font-medium text-red-600">Failed to load purchases</p>
+                        <p className="text-xs text-red-500 max-w-md">{fetchError}</p>
+                        <Button variant="outline" size="sm" className="mt-2 gap-1.5" onClick={fetchPurchases}>
+                          <Search className="w-3.5 h-3.5" /> Retry
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
                 ) : purchases.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="p-12 text-center">
