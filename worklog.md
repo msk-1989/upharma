@@ -47,3 +47,29 @@ Stage Summary:
 - Settings page now has 6 tabs: Store, GST, Print, Counters, Users, Invoice
 - Migration SQL provided at prisma/migrations/20260520150000_add_default_counter_to_users/migration.sql
 - User needs to run BOTH migration SQLs on Neon console (previous + this one)
+
+---
+Task ID: 7
+Agent: Main Agent (3 parallel subagents)
+Task: Enterprise Phase 2 — Security hardening, pharmacy features & critical bug fixes
+
+Work Log:
+- Read and analyzed all existing sync-engine.js (1761 lines), route.ts (530 lines), preload.js, ipc.js
+- Identified 18 issues including 6 critical bugs
+- Subagent 1: Rewrote sync-engine.js (1762→2128 lines) with all fixes
+- Subagent 2: Rewrote route.ts (530→772 lines) + created register endpoint (216 lines)
+- Subagent 3: Created device-auth.js (128 lines) + updated preload.js (87→95) + ipc.js (365→440)
+- Verified all critical changes present with grep checks
+- Committed and pushed to GitHub
+
+Stage Summary:
+- JWT device auth replaces plain API key
+- scrypt PIN hashing with timing-safe comparison
+- Invoice format: STORECODE-TERM-YYYYMMDD-SEQ
+- sync_batch_id + checksum duplicate detection
+- Batch merge preserves local stock state
+- AbortController timeout on fetch
+- Pharmacy features: expiry alerts, Schedule H tracking, low stock alerts
+- 6 critical bugs fixed (synced column, SQL precedence, method duplication, batch wipe, PIN-only login, incremental pull)
+- Total: 6 files changed, 1358 insertions, 319 deletions
+- Commit: 95da551
