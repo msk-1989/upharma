@@ -344,6 +344,8 @@ model Sale {
   date           DateTime @default(now())
   subtotal       Float    @default(0)
   totalDiscount  Float    @default(0)
+  discountType   String?  // 'percentage' | 'flat' — how the bill discount was applied
+  discountReason String?  // reason for the bill discount
   cgst           Float    @default(0)
   sgst           Float    @default(0)
   igst           Float    @default(0)
@@ -386,6 +388,7 @@ model SaleItem {
   cgst          Float    @default(0)
   sgst          Float    @default(0)
   igst          Float    @default(0)
+  discountType  String?  @default("percentage") // 'percentage' — item-level discount type
   discount      Float    @default(0)
   total         Float
   expiryDate    DateTime?

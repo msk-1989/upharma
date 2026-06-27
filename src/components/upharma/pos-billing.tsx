@@ -92,6 +92,7 @@ interface CartItem {
   stripsPerBox: number;
   baseUnit: string;
   availableStock: number;
+  discountPercent: number; // 0-100, item-level % discount
 }
 
 interface Customer {
@@ -229,6 +230,7 @@ export function POSBillingPage() {
   // Discount state
   const [discountType, setDiscountType] = useState<'percentage' | 'flat'>('percentage');
   const [discountValue, setDiscountValue] = useState<string>('');
+  const [discountReason, setDiscountReason] = useState<string>('');
 
   // Loyalty & Credit state
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
@@ -504,6 +506,8 @@ export function POSBillingPage() {
     setSearchQuery('');
     setSearchResults([]);
     setCashReceived('');
+    setDiscountValue('');
+    setDiscountReason('');
     setUseLoyaltyPoints(false);
     setCreditWarning(null);
     toast({ title: 'Bill Held', description: `Press F3 or click Held Bills (${trimmed.length} held)` });
@@ -676,6 +680,7 @@ export function POSBillingPage() {
         stripsPerBox: medicine.stripsPerBox,
         baseUnit: medicine.baseUnit,
         availableStock: batch.stockQty,
+        discountPercent: 0,
       };
       setCart((prev) => [...prev, cartItem]);
     }
@@ -734,22 +739,38 @@ export function POSBillingPage() {
     setCart([]);
   };
 
+  const updateItemDiscount = (cartId: string, discountPercent: number) => {
+    const clamped = Math.max(0, Math.min(100, discountPercent));
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.cartId !== cartId) return item;
+        return { ...item, discountPercent: clamped };
+      })
+    );
+  };
+
   // ==================== CALCULATIONS ====================
 
   const calcItemLine = (item: CartItem) => {
     const qtySmallest = item.quantity * getUnitMultiplier(item.unitType, item.unitsPerStrip, item.stripsPerBox);
-    const lineTotal = qtySmallest * item.saleRate;
-    const gst = (lineTotal * item.gstPercent) / 100;
+    const lineGross = qtySmallest * item.saleRate;
+    // Item-level discount (percentage) — applied before GST (GST compliant)
+    const itemDiscPct = Math.max(0, Math.min(100, item.discountPercent || 0));
+    const itemDiscAmt = Math.round((lineGross * itemDiscPct) / 100 * 100) / 100;
+    const lineNet = Math.round((lineGross - itemDiscAmt) * 100) / 100;
+    // GST calculated on discounted amount
+    const gst = Math.round((lineNet * item.gstPercent) / 100 * 100) / 100;
     const cgst = gst / 2;
     const sgst = gst / 2;
-    return { qtySmallest, lineTotal, cgst, sgst, gst };
+    return { qtySmallest, lineGross, itemDiscAmt, lineNet, cgst, sgst, gst, total: Math.round((lineNet + gst) * 100) / 100 };
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + calcItemLine(item).lineTotal, 0);
+  const subtotal = cart.reduce((sum, item) => sum + calcItemLine(item).lineGross, 0);
+  const totalItemDiscount = cart.reduce((sum, item) => sum + calcItemLine(item).itemDiscAmt, 0);
   const totalCgst = cart.reduce((sum, item) => sum + calcItemLine(item).cgst, 0);
   const totalSgst = cart.reduce((sum, item) => sum + calcItemLine(item).sgst, 0);
   const totalGst = totalCgst + totalSgst;
-  const preDiscountTotal = subtotal + totalGst;
+  const preDiscountTotal = (subtotal - totalItemDiscount) + totalGst;
 
   // Discount calculations
   const discountValueNum = parseFloat(discountValue) || 0;
@@ -835,6 +856,7 @@ export function POSBillingPage() {
         medicineId: item.medicineId,
         quantity: item.quantity,
         unitType: item.unitType,
+        discountPercent: item.discountPercent || 0,
       }));
 
       let customerName: string | undefined;
@@ -852,6 +874,7 @@ export function POSBillingPage() {
         loyaltyPointsUsed: pointsToUse,
         discountType: discountType,
         discountValue: billDiscount > 0 ? discountValueNum : 0,
+        discountReason: billDiscount > 0 ? discountReason : undefined,
         userId: user?.id,
       };
 
@@ -906,6 +929,7 @@ export function POSBillingPage() {
           mrp: item.mrp,
           batchNo: item.batchNo,
           expiryDate: item.expiryDate,
+          discount: item.discount || 0,
           total: item.total,
         })),
         createdAt: data.data.createdAt,
@@ -933,6 +957,7 @@ export function POSBillingPage() {
       setCreditWarning(null);
       setCashReceived('');
       setDiscountValue('');
+      setDiscountReason('');
       loadRecentSales();
       // Auto-focus search for next invoice
       setTimeout(() => searchInputRef.current?.focus(), 100);
@@ -1261,6 +1286,9 @@ export function POSBillingPage() {
                         <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 pb-3">
                           Rate
                         </th>
+                        <th className="text-center text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 pb-3">
+                          Disc %
+                        </th>
                         <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-6 pb-3">
                           Total
                         </th>
@@ -1269,7 +1297,7 @@ export function POSBillingPage() {
                     </thead>
                     <tbody>
                       {cart.map((item) => {
-                        const { lineTotal, gst } = calcItemLine(item);
+                        const { lineGross, itemDiscAmt, total, gst } = calcItemLine(item);
                         const displayRate = getDisplayRate(
                           item.unitType,
                           item.saleRate,
@@ -1352,10 +1380,49 @@ export function POSBillingPage() {
                               </p>
                             </td>
 
+                            <td className="px-3 py-3 text-center">
+                              <div className="relative inline-flex items-center">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={item.discountPercent || ''}
+                                  placeholder="0"
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                      updateItemDiscount(item.cartId, val);
+                                    } else if (e.target.value === '') {
+                                      updateItemDiscount(item.cartId, 0);
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (isNaN(val) || val < 0) updateItemDiscount(item.cartId, 0);
+                                    if (val > 100) updateItemDiscount(item.cartId, 100);
+                                  }}
+                                  className="w-14 h-7 text-center text-xs font-medium border border-gray-200 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-[10px] text-gray-400 ml-0.5">%</span>
+                              </div>
+                            </td>
+
                             <td className="px-6 py-3 text-right">
-                              <p className="text-sm font-bold text-gray-900">
-                                {formatINR(lineTotal + gst)}
-                              </p>
+                              {itemDiscAmt > 0 ? (
+                                <div>
+                                  <p className="text-xs text-gray-400 line-through">
+                                    {formatINR(lineGross + (lineGross * item.gstPercent) / 100)}
+                                  </p>
+                                  <p className="text-sm font-bold text-red-600">
+                                    {formatINR(total)}
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-sm font-bold text-gray-900">
+                                  {formatINR(total)}
+                                </p>
+                              )}
                             </td>
 
                             <td className="px-3 py-3">
@@ -1852,6 +1919,17 @@ export function POSBillingPage() {
                     </span>
                   </div>
 
+                  {totalItemDiscount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-orange-600 font-medium flex items-center gap-1">
+                        Item Discounts
+                      </span>
+                      <span className="text-sm font-medium text-orange-600">
+                        -{formatINR(totalItemDiscount)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">GST (CGST + SGST)</span>
                     <span className="text-sm font-medium text-gray-900">
@@ -1960,6 +2038,24 @@ export function POSBillingPage() {
                           </button>
                         ))}
                       </div>
+                    )}
+                    {/* Discount reason */}
+                    {(billDiscount > 0 || discountValue) && (
+                      <Select value={discountReason} onValueChange={setDiscountReason}>
+                        <SelectTrigger className="w-full h-7 text-xs">
+                          <SelectValue placeholder="Discount reason (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="regular_customer">Regular Customer</SelectItem>
+                          <SelectItem value="promotional_offer">Promotional Offer</SelectItem>
+                          <SelectItem value="doctor_reference">Doctor Reference</SelectItem>
+                          <SelectItem value="bulk_purchase">Bulk Purchase</SelectItem>
+                          <SelectItem value="special_discount">Special Discount</SelectItem>
+                          <SelectItem value="expiry_clearance">Expiry Clearance</SelectItem>
+                          <SelectItem value="competitor_match">Competitor Price Match</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
 

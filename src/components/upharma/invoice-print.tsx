@@ -13,6 +13,7 @@ interface InvoiceItem {
   mrp: number;
   batchNo: string | null;
   expiryDate: string | null;
+  discount: number;
   total: number;
 }
 
@@ -141,14 +142,14 @@ function buildInvoiceHTML(data: InvoiceData, store: typeof STORE_DEFAULTS): stri
   const itemsHTML = data.items.map((item, idx) => `
     <tr>
       <td style="border:${BORDER};padding:3px 5px;text-align:center;font-size:9px;">${idx + 1}</td>
-      <td style="border:${BORDER};padding:3px 5px;text-align:left;font-weight:600;font-size:9px;">${item.medicineName}</td>
+      <td style="border:${BORDER};padding:3px 5px;text-align:left;font-weight:600;font-size:9px;">${item.medicineName}${item.discount > 0 ? ` <span style="font-weight:400;color:#dc2626;font-size:8px;">(-${fmtAmt(item.discount)})</span>` : ''}</td>
       <td style="border:${BORDER};padding:3px 5px;text-align:center;font-size:9px;">${item.unitType || ''}</td>
       <td style="border:${BORDER};padding:3px 5px;text-align:center;font-size:9px;">${item.batchNo || '-'}</td>
       <td style="border:${BORDER};padding:3px 5px;text-align:center;font-size:9px;">${formatExpiry(item.expiryDate)}</td>
       <td style="border:${BORDER};padding:3px 5px;text-align:right;font-size:9px;">${fmtAmt(item.mrp)}</td>
       <td style="border:${BORDER};padding:3px 5px;text-align:right;font-size:9px;">${item.quantity}</td>
       <td style="border:${BORDER};padding:3px 5px;text-align:right;font-size:9px;">${fmtAmt(item.saleRate)}</td>
-      <td style="border:${BORDER};padding:3px 5px;text-align:right;font-weight:600;font-size:9px;">${fmtAmt(item.total)}</td>
+      <td style="border:${BORDER};padding:3px 5px;text-align:right;font-weight:600;font-size:9px;${item.discount > 0 ? 'color:#dc2626;' : ''}">${fmtAmt(item.total)}</td>
     </tr>`).join('');
 
   const emptyRows = data.items.length < 8
@@ -406,14 +407,17 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
           {data.items.map((item, idx) => (
             <tr key={idx}>
               <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'center', fontSize: '9px' }}>{idx + 1}</td>
-              <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'left', fontWeight: 600, fontSize: '9px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}>{item.medicineName}</td>
+              <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'left', fontWeight: 600, fontSize: '9px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}>
+                {item.medicineName}
+                {item.discount > 0 && <span style={{ fontWeight: 400, color: '#dc2626', fontSize: '8px' }}> (-{fmtAmt(item.discount)})</span>}
+              </td>
               <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'center', fontSize: '9px' }}>{item.unitType || ''}</td>
               <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'center', fontSize: '9px' }}>{item.batchNo || '-'}</td>
               <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'center', fontSize: '9px' }}>{formatExpiry(item.expiryDate)}</td>
               <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'right', fontSize: '9px' }}>{fmtAmt(item.mrp)}</td>
               <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'right', fontSize: '9px' }}>{item.quantity}</td>
               <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'right', fontSize: '9px' }}>{fmtAmt(item.saleRate)}</td>
-              <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'right', fontWeight: 600, fontSize: '9px' }}>{fmtAmt(item.total)}</td>
+              <td style={{ border: BORDER, padding: '3px 5px', textAlign: 'right', fontWeight: 600, fontSize: '9px', color: item.discount > 0 ? '#dc2626' : undefined }}>{fmtAmt(item.total)}</td>
             </tr>
           ))}
           {data.items.length < 8 && Array.from({ length: 8 - data.items.length }).map((_, idx) => (

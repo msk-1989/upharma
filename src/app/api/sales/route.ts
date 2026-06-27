@@ -34,7 +34,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, customerName, doctorName, paymentMode, items, userId, loyaltyPointsUsed, discountType, discountValue } = body;
+    const { customerId, customerName, doctorName, paymentMode, items, userId, loyaltyPointsUsed, discountType, discountValue, discountReason } = body;
 
     // Day check: Admin bypasses (handled by role in requireDayOpen logic)
     const userRole = userId ? await getUserRole(userId) : undefined;
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     let subtotal = 0;
+    let totalItemDiscount = 0;
     let totalGst = 0;
     let grandTotal = 0;
     const saleItemsData: any[] = [];
@@ -73,11 +74,20 @@ export async function POST(request: NextRequest) {
       });
 
       const rate = batch?.saleRate || medicine.saleRate;
-      const lineTotal = qtySmallest * rate;
-      const cgst = lineTotal * (medicine.gstPercent / 2) / 100;
-      const sgst = cgst;
+      const lineGross = qtySmallest * rate;
 
-      subtotal += lineTotal;
+      // Item-level discount (percentage) — applied before GST (GST compliant)
+      const itemDiscPct = Math.max(0, Math.min(100, Number(item.discountPercent) || 0));
+      const itemDiscAmt = Math.round((lineGross * itemDiscPct) / 100 * 100) / 100;
+      const lineNet = Math.round((lineGross - itemDiscAmt) * 100) / 100;
+
+      // GST on discounted amount
+      const cgst = Math.round(lineNet * (medicine.gstPercent / 2) / 100 * 100) / 100;
+      const sgst = cgst;
+      const lineTotal = Math.round((lineNet + cgst + sgst) * 100) / 100;
+
+      subtotal += lineGross;
+      totalItemDiscount += itemDiscAmt;
       totalGst += cgst + sgst;
 
       saleItemsData.push({
@@ -90,10 +100,12 @@ export async function POST(request: NextRequest) {
         saleRate: rate,
         mrp: batch?.mrp || medicine.mrp,
         gstPercent: medicine.gstPercent,
-        cgst: Math.round(cgst * 100) / 100,
-        sgst: Math.round(sgst * 100) / 100,
+        cgst,
+        sgst,
         igst: 0,
-        total: Math.round(lineTotal * 100) / 100,
+        discountType: itemDiscPct > 0 ? 'percentage' : null,
+        discount: itemDiscAmt,
+        total: lineTotal,
         expiryDate: batch?.expiryDate,
       });
 
@@ -106,7 +118,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    grandTotal = subtotal + totalGst;
+    const netSubtotal = subtotal - totalItemDiscount;
+    grandTotal = netSubtotal + totalGst;
 
     // Bill discount calculation
     let totalDiscount = 0;
@@ -168,7 +181,9 @@ export async function POST(request: NextRequest) {
         customerId: customerId || null,
         customerName: customerName || null,
         subtotal: Math.round(subtotal * 100) / 100,
-        totalDiscount: Math.round(totalDiscount * 100) / 100,
+        totalDiscount: Math.round((totalItemDiscount + totalDiscount) * 100) / 100,
+        discountType: totalDiscount > 0 ? discType : null,
+        discountReason: discountReason?.trim() || null,
         cgst: 0,
         sgst: 0,
         totalGst: Math.round(totalGst * 100) / 100,
