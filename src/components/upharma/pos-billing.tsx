@@ -226,6 +226,10 @@ export function POSBillingPage() {
   const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
   const doctorDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Discount state
+  const [discountType, setDiscountType] = useState<'percentage' | 'flat'>('percentage');
+  const [discountValue, setDiscountValue] = useState<string>('');
+
   // Loyalty & Credit state
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
   const [creditWarning, setCreditWarning] = useState<string | null>(null);
@@ -747,12 +751,19 @@ export function POSBillingPage() {
   const totalGst = totalCgst + totalSgst;
   const preDiscountTotal = subtotal + totalGst;
 
-  // Loyalty points calculations
-  const maxPointsDiscount = preDiscountTotal * 0.1; // Max 10% of bill
+  // Discount calculations
+  const discountValueNum = parseFloat(discountValue) || 0;
+  const billDiscount = discountType === 'percentage'
+    ? Math.round((preDiscountTotal * Math.min(discountValueNum, 100)) / 100 * 100) / 100
+    : Math.min(discountValueNum, preDiscountTotal);
+
+  // Loyalty points calculations (applied after bill discount)
+  const afterBillDiscount = preDiscountTotal - billDiscount;
+  const maxPointsDiscount = afterBillDiscount * 0.1; // Max 10% of bill
   const availablePoints = selectedCustomer?.loyaltyPoints || 0;
   const pointsToUse = useLoyaltyPoints ? Math.min(availablePoints, maxPointsDiscount) : 0;
   const loyaltyDiscount = pointsToUse; // ₹1 per point
-  const grandTotal = Math.round((preDiscountTotal - loyaltyDiscount) * 100) / 100;
+  const grandTotal = Math.round((afterBillDiscount - loyaltyDiscount) * 100) / 100;
 
   // ==================== CASH CHANGE CALCULATION ====================
 
@@ -839,6 +850,8 @@ export function POSBillingPage() {
         paymentMode,
         items: saleItems,
         loyaltyPointsUsed: pointsToUse,
+        discountType: discountType,
+        discountValue: billDiscount > 0 ? discountValueNum : 0,
         userId: user?.id,
       };
 
@@ -880,6 +893,8 @@ export function POSBillingPage() {
         customerName: data.data.customerName || customerName || null,
         doctorName: doctorName.trim() || null,
         subtotal: data.data.subtotal,
+        totalDiscount: data.data.totalDiscount || 0,
+        totalGst: data.data.totalGst || 0,
         loyaltyPointsUsed: data.data.loyaltyPointsUsed || 0,
         loyaltyPointsEarned: data.loyaltyPointsEarned || 0,
         paymentMode: data.data.paymentMode || 'Cash',
@@ -917,6 +932,7 @@ export function POSBillingPage() {
       setUseLoyaltyPoints(false);
       setCreditWarning(null);
       setCashReceived('');
+      setDiscountValue('');
       loadRecentSales();
       // Auto-focus search for next invoice
       setTimeout(() => searchInputRef.current?.focus(), 100);
@@ -1835,6 +1851,128 @@ export function POSBillingPage() {
                       {formatINR(subtotal)}
                     </span>
                   </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">GST (CGST + SGST)</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatINR(totalGst)}
+                    </span>
+                  </div>
+
+                  <Separator />
+
+                  {/* Discount Input */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                        Discount
+                        <kbd className="hidden lg:inline-block ml-1 px-1 py-0 text-[9px] font-mono bg-gray-100 text-gray-400 rounded border border-gray-200 align-middle">F6</kbd>
+                      </span>
+                      {billDiscount > 0 && (
+                        <button
+                          onClick={() => setDiscountValue('')}
+                          className="text-[11px] text-red-500 hover:text-red-700 font-medium flex items-center gap-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={discountType}
+                        onValueChange={(val: 'percentage' | 'flat') => {
+                          setDiscountType(val);
+                          // Convert value when switching types
+                          if (discountValue) {
+                            const num = parseFloat(discountValue) || 0;
+                            if (val === 'flat' && discountType === 'percentage') {
+                              // Convert % to ₹
+                              const flatVal = Math.round((preDiscountTotal * num / 100) * 100) / 100;
+                              setDiscountValue(String(flatVal));
+                            } else if (val === 'percentage' && discountType === 'flat') {
+                              // Convert ₹ to %
+                              const pctVal = preDiscountTotal > 0 ? Math.round((num / preDiscountTotal) * 10000) / 100 : 0;
+                              setDiscountValue(String(Math.min(pctVal, 100)));
+                            }
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[80px] h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">% Off</SelectItem>
+                          <SelectItem value="flat">₹ Flat</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="relative flex-1">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                          {discountType === 'percentage' ? '%' : '₹'}
+                        </span>
+                        <Input
+                          ref={discountInputRef}
+                          type="number"
+                          min="0"
+                          max={discountType === 'percentage' ? '100' : String(preDiscountTotal)}
+                          step={discountType === 'percentage' ? '0.5' : '1'}
+                          placeholder={discountType === 'percentage' ? '0' : '0'}
+                          value={discountValue}
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            // Clamp percentage to 100
+                            if (discountType === 'percentage' && parseFloat(val) > 100) {
+                              val = '100';
+                            }
+                            // Clamp flat to not exceed total
+                            if (discountType === 'flat' && parseFloat(val) > preDiscountTotal) {
+                              val = String(Math.round(preDiscountTotal * 100) / 100);
+                            }
+                            setDiscountValue(val);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              paymentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              setTimeout(() => cashReceivedRef.current?.focus(), 200);
+                            }
+                          }}
+                          className="pl-7 h-8 text-sm font-medium"
+                        />
+                      </div>
+                    </div>
+                    {discountType === 'percentage' && discountValue && parseFloat(discountValue) > 0 && (
+                      <p className="text-[11px] text-gray-400">
+                        {formatINR(billDiscount)} discount on {formatINR(preDiscountTotal)}
+                      </p>
+                    )}
+                    {/* Quick discount buttons */}
+                    {discountType === 'percentage' && !discountValue && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[5, 10, 15, 20].map((pct) => (
+                          <button
+                            key={pct}
+                            onClick={() => setDiscountValue(String(pct))}
+                            className="px-2 py-0.5 text-[11px] font-medium bg-emerald-50 text-emerald-700 rounded border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {billDiscount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-red-600 font-medium">
+                        Bill Discount {discountType === 'percentage' ? `(${discountValue}%)` : ''}
+                      </span>
+                      <span className="text-sm font-medium text-red-600">
+                        -{formatINR(billDiscount)}
+                      </span>
+                    </div>
+                  )}
 
                   {loyaltyDiscount > 0 && (
                     <div className="flex items-center justify-between">

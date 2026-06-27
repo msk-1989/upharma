@@ -21,6 +21,8 @@ interface InvoiceData {
   customerName: string | null;
   doctorName: string | null;
   subtotal: number;
+  totalDiscount: number;
+  totalGst: number;
   loyaltyPointsUsed: number;
   loyaltyPointsEarned: number;
   paymentMode: string;
@@ -155,8 +157,9 @@ function buildInvoiceHTML(data: InvoiceData, store: typeof STORE_DEFAULTS): stri
     ).join('')
     : '';
 
+  const discountDeduction = data.totalDiscount > 0 ? data.totalDiscount : 0;
   const loyaltyDeduction = data.loyaltyPointsUsed > 0 ? data.loyaltyPointsUsed : 0;
-  const finalTotal = data.subtotal - loyaltyDeduction;
+  const finalTotal = data.subtotal + (data.totalGst || 0) - discountDeduction - loyaltyDeduction;
 
   const inv = (copyLabel: string) => `
     <div style="width:100%;max-width:210mm;padding:6mm 8mm;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;line-height:1.4;page-break-inside:avoid;">
@@ -218,12 +221,19 @@ function buildInvoiceHTML(data: InvoiceData, store: typeof STORE_DEFAULTS): stri
       <div style="border-top:1px solid #333;padding-top:4px;">
         <table style="width:100%;font-size:9.5px;">
           <tbody>
-            ${loyaltyDeduction > 0 ? `
             <tr>
               <td style="text-align:left;padding:1px 5px;color:#555;">Subtotal</td>
               <td style="text-align:right;padding:1px 5px;font-weight:600;color:#333;">${fmtAmt(data.subtotal)}</td>
             </tr>
-            <tr>
+            ${data.totalGst > 0 ? `<tr>
+              <td style="text-align:left;padding:1px 5px;color:#555;">GST</td>
+              <td style="text-align:right;padding:1px 5px;color:#333;">${fmtAmt(data.totalGst)}</td>
+            </tr>` : ''}
+            ${discountDeduction > 0 ? `<tr>
+              <td style="text-align:left;padding:1px 5px;color:#dc2626;font-weight:600;">Discount</td>
+              <td style="text-align:right;padding:1px 5px;font-weight:600;color:#dc2626;">-${fmtAmt(discountDeduction)}</td>
+            </tr>` : ''}
+            ${loyaltyDeduction > 0 ? `<tr>
               <td style="text-align:left;padding:1px 5px;color:#b45309;">Loyalty Discount</td>
               <td style="text-align:right;padding:1px 5px;font-weight:600;color:#b45309;">-${fmtAmt(loyaltyDeduction)}</td>
             </tr>` : ''}
@@ -311,8 +321,9 @@ export async function printInvoiceNewWindow(data: InvoiceData): Promise<void> {
 
 function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: string }) {
   const store = getStore();
+  const discountDeduction = data.totalDiscount > 0 ? data.totalDiscount : 0;
   const loyaltyDeduction = data.loyaltyPointsUsed > 0 ? data.loyaltyPointsUsed : 0;
-  const finalTotal = data.subtotal - loyaltyDeduction;
+  const finalTotal = data.subtotal + (data.totalGst || 0) - discountDeduction - loyaltyDeduction;
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -419,10 +430,20 @@ function InvoiceTemplate({ data, copyLabel }: { data: InvoiceData; copyLabel: st
       <div style={{ borderTop: '1px solid #333', paddingTop: '4px' }}>
         <table style={{ width: '100%', fontSize: '9.5px' }}>
           <tbody>
-            {loyaltyDeduction > 0 && (
+            <tr>
+              <td style={{ textAlign: 'left', padding: '1px 5px', color: '#555' }}>Subtotal</td>
+              <td style={{ textAlign: 'right', padding: '1px 5px', fontWeight: 600, color: '#333' }}>{fmtAmt(data.subtotal)}</td>
+            </tr>
+            {data.totalGst > 0 && (
               <tr>
-                <td style={{ textAlign: 'left', padding: '1px 5px', color: '#555' }}>Subtotal</td>
-                <td style={{ textAlign: 'right', padding: '1px 5px', fontWeight: 600, color: '#333' }}>{fmtAmt(data.subtotal)}</td>
+                <td style={{ textAlign: 'left', padding: '1px 5px', color: '#555' }}>GST</td>
+                <td style={{ textAlign: 'right', padding: '1px 5px', color: '#333' }}>{fmtAmt(data.totalGst)}</td>
+              </tr>
+            )}
+            {discountDeduction > 0 && (
+              <tr>
+                <td style={{ textAlign: 'left', padding: '1px 5px', color: '#dc2626', fontWeight: 600 }}>Discount</td>
+                <td style={{ textAlign: 'right', padding: '1px 5px', fontWeight: 600, color: '#dc2626' }}>-{fmtAmt(discountDeduction)}</td>
               </tr>
             )}
             {loyaltyDeduction > 0 && (

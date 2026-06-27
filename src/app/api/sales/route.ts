@@ -34,7 +34,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, customerName, doctorName, paymentMode, items, userId, loyaltyPointsUsed } = body;
+    const { customerId, customerName, doctorName, paymentMode, items, userId, loyaltyPointsUsed, discountType, discountValue } = body;
 
     // Day check: Admin bypasses (handled by role in requireDayOpen logic)
     const userRole = userId ? await getUserRole(userId) : undefined;
@@ -108,14 +108,25 @@ export async function POST(request: NextRequest) {
 
     grandTotal = subtotal + totalGst;
 
-    // Loyalty points calculation
+    // Bill discount calculation
+    let totalDiscount = 0;
+    const discType = discountType || 'percentage';
+    const discValue = Math.max(0, Number(discountValue) || 0);
+    if (discType === 'percentage') {
+      totalDiscount = Math.round((grandTotal * Math.min(discValue, 100)) / 100 * 100) / 100;
+    } else {
+      totalDiscount = Math.min(discValue, grandTotal);
+    }
+    const afterDiscount = grandTotal - totalDiscount;
+
+    // Loyalty points calculation (applied after bill discount)
     const pointsToUse = Math.max(0, Math.floor(Number(loyaltyPointsUsed) || 0));
-    const maxDiscountFromPoints = grandTotal * 0.1; // Max 10% of bill
+    const maxDiscountFromPoints = afterDiscount * 0.1; // Max 10% of remaining bill
     const pointsDiscount = Math.min(pointsToUse, maxDiscountFromPoints); // ₹1 per point
-    const loyaltyPointsEarned = Math.floor(grandTotal / 100);
+    const loyaltyPointsEarned = Math.floor(afterDiscount / 100);
 
     // Apply loyalty points discount
-    const finalGrandTotal = Math.round((grandTotal - pointsDiscount) * 100) / 100;
+    const finalGrandTotal = Math.round((afterDiscount - pointsDiscount) * 100) / 100;
 
     // Credit limit check
     let creditWarning: string | null = null;
@@ -157,6 +168,7 @@ export async function POST(request: NextRequest) {
         customerId: customerId || null,
         customerName: customerName || null,
         subtotal: Math.round(subtotal * 100) / 100,
+        totalDiscount: Math.round(totalDiscount * 100) / 100,
         cgst: 0,
         sgst: 0,
         totalGst: Math.round(totalGst * 100) / 100,
